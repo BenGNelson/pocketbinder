@@ -4,13 +4,13 @@
 Browse every set from the self-hosted catalog (ingested by card_sync.py from a
 read-only pokemon-tcg-data clone), see which cards you own overlaid on each set,
 search across all cards, and show off your collection. Card face images are
-proxied from images.pokemontcg.io and cached on demand as WebP — the same
-cache-and-serve shape as game box art, so browsing makes no repeat external
-calls and only cards you actually view take cache space.
+proxied from images.pokemontcg.io and cached on demand as WebP, so browsing
+makes no repeat external calls and only cards you actually view take cache space.
 
-Ownership is imported once from a Pokéllector export (keyed on set code + card
-number) and then edited in HQ — HQ is the living source of truth. A re-import
-replaces the imported ('pokellector') rows but preserves in-HQ ('manual') edits.
+Ownership can be bulk-imported from a CSV/JSON export (keyed on set id or set
+code + card number) and edited in the app — the app is the living source of
+truth. A re-import replaces the imported rows but preserves your in-app
+('manual') edits.
 
 This router is the thin HTTP layer; the catalog/import parsing lives in
 app/cards.py (pure, unit-tested) and the queries in app/db.py.
@@ -22,7 +22,7 @@ import os
 import urllib.parse
 
 import requests
-from fastapi import APIRouter, File, Query, UploadFile
+from fastapi import APIRouter, File, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, Field
 
@@ -32,7 +32,7 @@ from app.config import settings
 router = APIRouter()
 
 # Card faces are content-addressed (by card id + size) and rarely change, so let
-# the browser/PWA hold onto them for a long time.
+# the browser hold onto them for a long time.
 _ART_CACHE_HEADERS = {"Cache-Control": "public, max-age=2592000, immutable"}
 
 # An import file is small (a collection list, not media) — cap so a bad upload
@@ -123,7 +123,7 @@ class OwnershipRowModel(BaseModel):
     condition: str | None = None
     wishlist: bool = False
     notes: str | None = None
-    source: str = Field(description="'pokellector' (imported) or 'manual' (in-HQ edit)")
+    source: str = Field(description="'imported' (bulk import) or 'manual' (in-app edit)")
 
 
 class CardDetailModel(BaseModel):
@@ -147,7 +147,7 @@ class CardDetailModel(BaseModel):
 
 class ImportResultModel(BaseModel):
     imported: int = Field(description="Ownership rows written")
-    skipped: int = Field(description="Rows kept out because a manual (in-HQ) edit already owns that card+variant")
+    skipped: int = Field(description="Rows kept out because a manual (in-app) edit already owns that card+variant")
     unmatched: list[str] = Field(description="Card ids in the file with no match in the catalog")
     total_rows: int = Field(description="Rows parsed from the file")
 
@@ -159,6 +159,10 @@ class OwnershipUpdate(BaseModel):
     condition: str | None = None
     wishlist: bool = False
     notes: str | None = None
+
+
+class OkModel(BaseModel):
+    ok: bool = True
 
 
 class WantlistModel(BaseModel):
@@ -220,7 +224,7 @@ def cards_set_detail(setid: str):
     """One set: its metadata + every card, each with an owned/unowned overlay."""
     meta = db.get_card_set(setid)
     if not meta:
-        return Response(status_code=404)
+        raise HTTPException(status_code=404, detail="Set not found")
     cards = db.list_set_cards(setid)
     owned = sum(1 for c in cards if c.get("owned"))
     meta["card_count"] = len(cards)
@@ -236,7 +240,7 @@ def cards_set_wantlist(setid: str):
     fewest sellers to minimize shipping."""
     meta = db.get_card_set(setid)
     if not meta:
-        return Response(status_code=404)
+        raise HTTPException(status_code=404, detail="Set not found")
     cards = db.list_set_cards(setid)
     lines = [
         cards_mod.massentry_line(c["name"], meta.get("ptcgo_code"), c["number"])
@@ -280,7 +284,7 @@ def cards_card_detail(card_id: str):
     """One card's full metadata, market price, and your ownership of it."""
     card = db.get_card(card_id)
     if not card:
-        return Response(status_code=404)
+        raise HTTPException(status_code=404, detail="Card not found")
     set_meta = db.get_card_set(card["setid"])
     return {
         "id": card["id"],
@@ -319,8 +323,8 @@ def _card_image_bytes(url):
     """Raw bytes for a card face: a local archival original under CARDS_DIR when
     configured (its layout mirrors the CDN's /<set>/<num>.png), else the network.
     Returns None on any miss/failure — treated as transient (no permanent miss is
-    cached, unlike book covers), since a card in this dataset effectively always
-    has a working image URL and a placeholder-forever on a CDN blip is worse."""
+    cached), since a card in this dataset effectively always has a working image
+    URL and caching a placeholder forever on a CDN blip is worse."""
     if settings.cards_dir:
         rel = urllib.parse.urlparse(url).path.lstrip("/")
         local = os.path.join(settings.cards_dir, rel)
@@ -340,14 +344,18 @@ def _card_image_bytes(url):
 @router.get("/cards/image")
 def cards_image(
     id: str = Query(description="Card id from a listing"),
-    size: str = Query("small", description="'small' (grid) or 'large' (detail face)"),
+    size: str = Query(
+        "small",
+        pattern="^(small|large)$",
+        description="'small' (grid) or 'large' (detail face)",
+    ),
 ):
-    """A card's face, downscaled + cached as a WebP (same proxy-and-cache idea as
-    game box art). Prefers a local original under CARDS_DIR when configured, else
-    proxies images.pokemontcg.io. Cached by card id + size so the grid thumb and
-    the larger detail face coexist. 404 (without caching a miss) when the image
-    can't be fetched, so a transient CDN failure doesn't stick — the frontend
-    shows a placeholder and a later load retries."""
+    """A card's face, downscaled + cached as a WebP. Prefers a local original
+    under CARDS_DIR when configured, else proxies images.pokemontcg.io. Cached by
+    card id + size (constrained to two values, so the cache can't be exploded by
+    novel query strings) so the grid thumb and the larger detail face coexist.
+    404 (without caching a miss) when the image can't be fetched, so a transient
+    CDN failure doesn't stick — the frontend shows a placeholder and retries."""
     small_url, large_url = db.get_card_image_urls(id)
     want_large = size == "large"
     url = (large_url or small_url) if want_large else (small_url or large_url)
@@ -372,18 +380,18 @@ def cards_image(
 
 @router.post("/cards/ownership/import", response_model=ImportResultModel)
 def cards_import(file: UploadFile = File(description="Owned-cards CSV or JSON export")):
-    """Seed/refresh your collection from a Pokéllector export (CSV or JSON). Rows
-    are keyed on set code + card number → resolved to catalog card ids; ids with
-    no catalog match are reported back (never silently dropped). Replaces the
-    imported ('pokellector') rows but preserves in-HQ ('manual') edits."""
+    """Seed/refresh your collection from a CSV or JSON file. Rows are keyed on set
+    id OR set code + card number → resolved to catalog card ids; ids with no
+    catalog match are reported back (never silently dropped). Replaces the
+    imported rows but preserves your in-app ('manual') edits."""
     data = file.file.read(_MAX_IMPORT_BYTES + 1)
     if not data or len(data) > _MAX_IMPORT_BYTES:
-        return Response(status_code=413)
-    rows = cards_mod.parse_ownership(data, file.filename or "")
+        raise HTTPException(status_code=413, detail="Import file too large")
+    rows = cards_mod.parse_ownership(data, file.filename or "", set_alias=db.set_code_aliases())
     known = db.card_ids()
     matched = [r for r in rows if r["card_id"] in known]
     unmatched = sorted({r["card_id"] for r in rows if r["card_id"] not in known})
-    inserted, skipped = db.replace_ownership("pokellector", matched)
+    inserted, skipped = db.replace_ownership("imported", matched)
     return {
         "imported": inserted,
         "skipped": skipped,
@@ -392,12 +400,12 @@ def cards_import(file: UploadFile = File(description="Owned-cards CSV or JSON ex
     }
 
 
-@router.put("/cards/ownership")
+@router.put("/cards/ownership", response_model=OkModel)
 def cards_ownership_put(body: OwnershipUpdate):
-    """Mark a card owned / edit qty-condition-wishlist (an in-HQ 'manual' edit
+    """Mark a card owned / edit qty-condition-wishlist (an in-app 'manual' edit
     that survives a later re-import). The card must exist in the catalog."""
     if body.card_id not in db.card_ids():
-        return Response(status_code=404)
+        raise HTTPException(status_code=404, detail="Card not found")
     db.upsert_ownership(
         body.card_id,
         variant=body.variant,

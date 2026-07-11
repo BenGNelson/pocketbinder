@@ -61,9 +61,9 @@ CREATE INDEX IF NOT EXISTS idx_cards_setid ON cards (setid, sort_order);
 CREATE INDEX IF NOT EXISTS idx_cards_name ON cards (name COLLATE NOCASE);
 
 -- Your collection overlay. One row per owned/wanted (card, variant). `source`
--- separates a Pokéllector seed import ('pokellector', wiped + rewritten on each
--- re-import) from in-app edits ('manual', which survive re-import) — so the app
--- is the living tracker without a re-import clobbering your changes.
+-- separates a bulk file import ('imported', wiped + rewritten on each re-import)
+-- from in-app edits ('manual', which survive re-import) — so the app is the
+-- living tracker without a re-import clobbering your changes.
 CREATE TABLE IF NOT EXISTS card_ownership (
     card_id    TEXT NOT NULL,
     variant    TEXT NOT NULL DEFAULT 'normal',  -- normal|holofoil|reverseHolofoil|1stEdition
@@ -71,7 +71,7 @@ CREATE TABLE IF NOT EXISTS card_ownership (
     condition  TEXT,
     wishlist   INTEGER NOT NULL DEFAULT 0,       -- 1 = want (qty may be 0)
     notes      TEXT,
-    source     TEXT NOT NULL DEFAULT 'pokellector',  -- 'pokellector' | 'manual'
+    source     TEXT NOT NULL DEFAULT 'imported',  -- 'imported' | 'manual'
     updated_ms INTEGER NOT NULL,
     PRIMARY KEY (card_id, variant)
 );
@@ -95,6 +95,11 @@ def get_conn():
 def init_db():
     """Create tables if they don't exist. Idempotent; called on startup."""
     with get_conn() as conn:
+        # WAL lets the background indexer write while request threads read without
+        # blocking each other (the default rollback journal serializes them, which
+        # shows up as "database is locked" under the first full catalog build).
+        # It's a persistent DB-file setting, so once is enough.
+        conn.execute("PRAGMA journal_mode=WAL")
         conn.executescript(_SCHEMA)
 
 
@@ -237,6 +242,22 @@ def get_card_set(setid):
             (setid,),
         ).fetchone()
         return dict(row) if row else None
+
+
+def set_code_aliases():
+    """Map every set's dataset id AND its ptcgo code (both upper-cased) to the
+    canonical setid, so an import file can key on the human-facing set code you
+    actually know ('BS', 'SSH') or the dataset id ('base1', 'swsh1'). The setid
+    is inserted first so a ptcgo-code collision can't shadow a real dataset id."""
+    with get_conn() as conn:
+        rows = conn.execute("SELECT setid, ptcgo_code FROM card_sets").fetchall()
+    alias: dict[str, str] = {}
+    for r in rows:
+        alias[r["setid"].upper()] = r["setid"]
+    for r in rows:
+        if r["ptcgo_code"]:
+            alias.setdefault(r["ptcgo_code"].upper(), r["setid"])
+    return alias
 
 
 # The card columns the browse/search endpoints return (no prices — those go on
@@ -400,9 +421,9 @@ def update_card_prices(card_id, tcgplayer_usd, cardmarket_eur, now=None):
 def replace_ownership(source, rows, now_ms=None):
     """Replace every `source` row with `rows` (each a dict with at least
     `card_id`), in one transaction. A (card_id, variant) already held by a
-    DIFFERENT source (e.g. a 'manual' in-HQ edit) is preserved, never clobbered —
-    so a Pokéllector re-import can't undo your changes. Returns (inserted,
-    skipped) where skipped = rows that collided with a preserved row."""
+    DIFFERENT source (e.g. a 'manual' in-app edit) is preserved, never clobbered —
+    so a re-import can't undo your changes. Returns (inserted, skipped) where
+    skipped = rows that collided with a preserved row."""
     now_ms = now_ms if now_ms is not None else int(time.time() * 1000)
     with get_conn() as conn:
         conn.execute("DELETE FROM card_ownership WHERE source = ?", (source,))

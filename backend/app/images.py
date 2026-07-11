@@ -38,8 +38,8 @@ def write_atomic(path: str, data: bytes) -> None:
         raise
 
 # WebP is supported by every browser we target (incl. iOS Safari). 400px wide
-# covers the grid thumbnails and the larger detail-page poster (~2.5x at the
-# 160px display size) while shrinking a typical box-art/poster PNG from a few
+# covers the grid thumbnails and the larger detail-page face (~2.5x at the
+# 160px display size) while shrinking a typical card-face PNG from a few
 # hundred KB down to ~20-40 KB.
 DEFAULT_MAX_WIDTH = 400
 DEFAULT_QUALITY = 80

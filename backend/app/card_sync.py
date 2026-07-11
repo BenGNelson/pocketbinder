@@ -30,7 +30,7 @@ from app import cards as cards_mod
 from app import db
 from app.config import settings
 
-log = logging.getLogger("home-hq.card-index")
+log = logging.getLogger("pocketbinder.card-index")
 
 # Bump when parse_set/parse_card change so already-cached rows get rewritten once
 # (otherwise unchanged set files are skipped by the mtime check).
@@ -73,6 +73,12 @@ class CardIndexer:
 
     def stop(self) -> None:
         self._stop.set()
+        # Bounded join so shutdown is deterministic (the thread wakes from its
+        # interval wait immediately, and checks the stop flag between set files /
+        # price batches). Daemon=True is the backstop if a pass is mid-request.
+        t = self._thread
+        if t is not None:
+            t.join(timeout=5)
 
     def status(self) -> dict:
         return {

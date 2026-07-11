@@ -2,13 +2,13 @@
 Pure logic for the Pokémon Cards module — parsing the pokemon-tcg-data catalog
 JSON and the user's owned-cards import file into the row shapes db.py stores.
 
-Kept free of HTTP / threads / DB so it's unit-tested directly (same split as
-app/library.py vs routers/library.py). The background indexer (card_sync.py) and
-the router import these; nothing here touches the network or the filesystem
-beyond reading the already-mounted read-only catalog clone.
+Kept free of HTTP / threads / DB so it's unit-tested directly — the pure layer
+under the background indexer (card_sync.py) and the router. Nothing here touches
+the network or the filesystem beyond reading the already-mounted read-only
+catalog clone.
 
 Card identity everywhere is the dataset's own id, `"<setid>-<number>"` (e.g.
-`base1-4`), which is also the join key against a Pokéllector export (set code +
+`base1-4`), which is also the join key for an import file (set id or set code, +
 card number).
 """
 
@@ -151,7 +151,7 @@ def extract_prices(api_card: dict) -> tuple[float | None, float | None]:
     tp = (api_card.get("tcgplayer") or {}).get("prices") or {}
     for variant in ("holofoil", "normal", "reverseHolofoil", "1stEditionHolofoil"):
         market = (tp.get(variant) or {}).get("market")
-        if market:
+        if market is not None:
             usd = market
             break
     cm = (api_card.get("cardmarket") or {}).get("prices") or {}
@@ -176,22 +176,26 @@ def massentry_line(name: str, ptcgo_code: str | None, number: str, qty: int = 1)
     return " ".join(p for p in parts if p)
 
 
-# --- owned-cards import file (Pokéllector export → ownership rows) ----------
+# --- owned-cards import file (CSV / JSON export → ownership rows) -----------
 
 _TRUE = {"1", "true", "yes", "y", "want", "wishlist"}
 
 
 def _norm_row(setid, number, variant=None, qty=None, condition=None,
-              wishlist=None, notes=None, card_id=None) -> dict | None:
+              wishlist=None, notes=None, card_id=None, set_alias=None) -> dict | None:
     """Normalize one import record into an ownership row dict. Resolves the card
-    id from setid+number when not given directly. Returns None if it can't form
-    an id (the caller counts these as skipped/unparseable)."""
+    id from setid+number when not given directly; `set_alias` (upper-cased set
+    id / ptcgo code → canonical set id) lets a row key on the human set code
+    ('BS') as well as the dataset id ('base1'). Returns None if it can't form an
+    id (the caller counts these as skipped/unparseable)."""
     cid = (card_id or "").strip() if card_id else ""
     if not cid:
         setid = (setid or "").strip()
         number = (str(number) if number is not None else "").strip()
         if not setid or not number:
             return None
+        if set_alias:
+            setid = set_alias.get(setid.upper(), setid)
         cid = f"{setid}-{number}"
     try:
         qty_i = int(qty) if qty not in (None, "") else 1
@@ -217,7 +221,8 @@ def _dedupe(rows: list[dict]) -> list[dict]:
     return list(seen.values())
 
 
-def parse_ownership(data: bytes | str, filename: str = "") -> list[dict]:
+def parse_ownership(data: bytes | str, filename: str = "",
+                    set_alias: dict | None = None) -> list[dict]:
     """Parse an owned-cards import (CSV or JSON) into ownership row dicts.
 
     JSON: a list of objects (or an object with a top-level "cards" list), each
@@ -225,8 +230,10 @@ def parse_ownership(data: bytes | str, filename: str = "") -> list[dict]:
     condition, wishlist, notes.
     CSV: a header row naming those same columns (setid,number[,variant,qty,…]).
 
-    Format is chosen by extension, then sniffed. Malformed rows are skipped.
-    Duplicates within the file are collapsed (last wins)."""
+    `set_alias` (from db.set_code_aliases) lets `setid` be either the dataset id
+    ('base1') or the human-facing set code ('BS'). Format is chosen by extension,
+    then sniffed. Malformed rows are skipped. Duplicates within the file are
+    collapsed (last wins)."""
     text = data.decode("utf-8", "replace") if isinstance(data, bytes) else data
     stripped = text.lstrip()
     is_json = filename.lower().endswith(".json") or stripped[:1] in ("[", "{")
@@ -249,6 +256,7 @@ def parse_ownership(data: bytes | str, filename: str = "") -> list[dict]:
                 wishlist=rec.get("wishlist"),
                 notes=rec.get("notes"),
                 card_id=rec.get("id") or rec.get("card_id"),
+                set_alias=set_alias,
             )
             if row:
                 rows.append(row)
@@ -265,6 +273,7 @@ def parse_ownership(data: bytes | str, filename: str = "") -> list[dict]:
                 wishlist=low.get("wishlist"),
                 notes=low.get("notes"),
                 card_id=low.get("id") or low.get("card_id"),
+                set_alias=set_alias,
             )
             if row:
                 rows.append(row)

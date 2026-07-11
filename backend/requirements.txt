@@ -1,11 +1,12 @@
-# PocketBinder backend deps (loose floors). Web framework + server:
-fastapi>=0.110
-uvicorn[standard]>=0.29
+# PocketBinder backend deps, pinned for reproducible image builds. Web framework
+# + server:
+fastapi==0.139.0
+uvicorn[standard]==0.51.0
 # Typed config from env / .env:
-pydantic-settings>=2.2
+pydantic-settings==2.14.2
 # WebP thumbnailing of card faces (app/images.py):
-Pillow>=10.3
+Pillow==12.3.0
 # Outbound HTTP — proxying card images + the pokemontcg.io price refresh:
-requests>=2.31
+requests==2.34.2
 # Multipart parsing for the ownership-import file upload:
-python-multipart>=0.0.18
+python-multipart==0.0.32

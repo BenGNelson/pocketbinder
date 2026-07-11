@@ -1,5 +1,5 @@
 """Tests for the Pokémon Cards module: catalog parsing, the indexer's ingest +
-prune, the ownership query/import logic (esp. re-import preserving in-HQ edits),
+prune, the ownership query/import logic (esp. re-import preserving in-app edits),
 and the HTTP endpoints."""
 
 import json
@@ -186,7 +186,7 @@ def test_index_price_refresh_noop_without_key(catalog, monkeypatch, tmp_path):
 
 
 def test_ownership_overlay_and_completion(catalog):
-    db.replace_ownership("pokellector", [
+    db.replace_ownership("imported", [
         {"card_id": "base1-4", "variant": "holofoil", "qty": 1},
         {"card_id": "base1-58", "variant": "normal", "qty": 3},
     ])
@@ -229,7 +229,7 @@ def test_value_hidden_when_no_usd_price(catalog):
 
 
 def test_search_owned_filter(catalog):
-    db.replace_ownership("pokellector", [{"card_id": "base1-4", "variant": "normal", "qty": 1}])
+    db.replace_ownership("imported", [{"card_id": "base1-4", "variant": "normal", "qty": 1}])
     all_char = db.search_cards("char", owned=False)
     assert {c["id"] for c in all_char} == {"base1-4"}
     # A card you don't own is excluded when owned=True.
@@ -238,10 +238,10 @@ def test_search_owned_filter(catalog):
 
 
 def test_reimport_preserves_manual_edits(catalog):
-    # An in-HQ edit (source='manual') on one card+variant.
+    # An in-app edit (source='manual') on one card+variant.
     db.upsert_ownership("base1-4", variant="holofoil", qty=2, source="manual")
-    # A Pokéllector re-import that also claims base1-4/holofoil, plus a new card.
-    inserted, skipped = db.replace_ownership("pokellector", [
+    # A re-import that also claims base1-4/holofoil, plus a new card.
+    inserted, skipped = db.replace_ownership("imported", [
         {"card_id": "base1-4", "variant": "holofoil", "qty": 9},  # collides w/ manual
         {"card_id": "base1-58", "variant": "normal", "qty": 1},
     ])
@@ -251,9 +251,9 @@ def test_reimport_preserves_manual_edits(catalog):
     assert holo["qty"] == 2 and holo["source"] == "manual"  # NOT clobbered to 9
 
 
-def test_reimport_replaces_prior_pokellector_rows(catalog):
-    db.replace_ownership("pokellector", [{"card_id": "base1-2", "variant": "normal", "qty": 1}])
-    db.replace_ownership("pokellector", [{"card_id": "base1-4", "variant": "normal", "qty": 1}])
+def test_reimport_replaces_prior_imported_rows(catalog):
+    db.replace_ownership("imported", [{"card_id": "base1-2", "variant": "normal", "qty": 1}])
+    db.replace_ownership("imported", [{"card_id": "base1-4", "variant": "normal", "qty": 1}])
     owned = {c["id"] for c in db.search_cards("", owned=True)}
     assert owned == {"base1-4"}  # the first import's card was wiped
 
@@ -286,7 +286,7 @@ def test_endpoints_over_client(client, catalog):
 
 def test_wantlist_endpoints(client, catalog):
     # Own one Base card → the other two are the want-list; swsh1 owns nothing.
-    db.replace_ownership("pokellector", [{"card_id": "base1-4", "variant": "normal", "qty": 1}])
+    db.replace_ownership("imported", [{"card_id": "base1-4", "variant": "normal", "qty": 1}])
 
     per_set = client.get("/api/cards/sets/base1/wantlist").json()
     assert per_set["total"] == 3 and per_set["missing"] == 2
