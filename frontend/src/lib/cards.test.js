@@ -1,5 +1,13 @@
 import { describe, it, expect } from 'vitest'
-import { cardImageUrl, setHref, cardsSearchHref, completionPct, formatUsd, MASSENTRY_URL } from './cards.js'
+import {
+  cardImageUrl,
+  setHref,
+  cardsSearchHref,
+  completionPct,
+  formatUsd,
+  massEntryLine,
+  MASSENTRY_URL,
+} from './cards.js'
 
 describe('cards helpers', () => {
   it('builds a same-origin card image url with size + encoded id', () => {
@@ -31,6 +39,13 @@ describe('cards helpers', () => {
 
   it('points the buy-helper at TCGplayer Mass Entry', () => {
     expect(MASSENTRY_URL).toBe('https://www.tcgplayer.com/massentry')
+  })
+
+  it('builds a TCGplayer mass-entry line, trimming and dropping an absent set code', () => {
+    expect(massEntryLine('Charizard', 'BS', '4')).toBe('1 Charizard BS 4')
+    expect(massEntryLine('Mew', 'PR', 'SM01', 3)).toBe('3 Mew PR SM01')
+    expect(massEntryLine('Pikachu', null, '58')).toBe('1 Pikachu 58')
+    expect(massEntryLine('  Snorlax  ', ' JU ', ' 11 ')).toBe('1 Snorlax JU 11')
   })
 
   it('formats USD, returning null when there is nothing to show', () => {

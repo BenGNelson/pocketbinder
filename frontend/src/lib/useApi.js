@@ -22,6 +22,11 @@ export function useApi(path, intervalMs = 5000) {
 
   useEffect(() => {
     let cancelled = false
+    // A null/empty path means "nothing to fetch" — settle idle, make no request.
+    if (!path) {
+      setState({ data: null, error: null, loading: false })
+      return
+    }
     setState({ data: null, error: null, loading: true }) // reset on path change
 
     const load = async () => {

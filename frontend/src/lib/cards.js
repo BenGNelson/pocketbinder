@@ -16,6 +16,16 @@ export function setHref(setid) {
 // pre-fill URL exists, so it's copy-list → paste).
 export const MASSENTRY_URL = 'https://www.tcgplayer.com/massentry'
 
+// One TCGplayer Mass Entry line: "<qty> <name> <setcode> <number>" (mirrors the
+// backend's massentry_line). Set code is the ptcgo code; it's omitted when absent
+// (Mass Entry still matches on name + number). Used to build a buy-list from a
+// hand-picked selection client-side, no round-trip needed.
+export function massEntryLine(name, ptcgoCode, number, qty = 1) {
+  return [qty, name?.trim(), ptcgoCode?.trim(), number != null ? String(number).trim() : '']
+    .filter((p) => p !== '' && p != null)
+    .join(' ')
+}
+
 // Build the /search href, optionally scoped to owned-only and/or ordered.
 // `q`, the owned flag, and the sort all live in the URL so a search is
 // refresh/share-safe. `sort` is omitted when it's the backend default ('name').

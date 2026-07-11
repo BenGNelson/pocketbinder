@@ -8,7 +8,10 @@ import { ownCard, unownCard } from '../../lib/ownership.js'
 // Toggling optimistically flips the tile — which plays the reveal when it becomes
 // owned — then persists; a failure rolls the optimistic state back.
 // `onOwnedChange(id, owned)` lets the parent update its edits overlay + stats.
-export default function CardTile({ card, label, onOpen, onOwnedChange }) {
+//
+// In `selectable` mode the card instead toggles a buy-list selection: tapping it
+// calls `onSelect(id)` and it shows a check when `selected`.
+export default function CardTile({ card, label, onOpen, onOwnedChange, selectable = false, selected = false, onSelect }) {
   const [busy, setBusy] = useState(false)
 
   const toggle = async () => {
@@ -30,16 +33,32 @@ export default function CardTile({ card, label, onOpen, onOwnedChange }) {
     <div className="relative">
       <button
         type="button"
-        onClick={() => onOpen(card.id)}
+        onClick={() => (selectable ? onSelect(card.id) : onOpen(card.id))}
+        aria-pressed={selectable ? selected : undefined}
         className="block w-full text-left active:scale-[0.97]"
         title={card.name}
       >
-        <div className="pb-pocket rounded-[11px] p-1">
+        <div
+          className={`pb-pocket rounded-[11px] p-1 ${
+            selectable && selected ? 'ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--bg)]' : ''
+          }`}
+        >
           <CardImage card={card} owned={card.owned} dim={!card.owned} />
         </div>
         {label && <span className="mt-1 block truncate text-xs text-[var(--dim)]">{label}</span>}
       </button>
-      <OwnToggle owned={card.owned} busy={busy} onToggle={toggle} />
+      {selectable ? (
+        selected && (
+          <span
+            className="pb-foil pointer-events-none absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold"
+            aria-hidden="true"
+          >
+            ✓
+          </span>
+        )
+      ) : (
+        <OwnToggle owned={card.owned} busy={busy} onToggle={toggle} />
+      )}
     </div>
   )
 }

@@ -2,14 +2,18 @@ import { useEffect, useState } from 'react'
 import { useApi } from '../../lib/useApi.js'
 import { MASSENTRY_URL } from '../../lib/cards.js'
 
-// The buy-helper: shows the cards you're missing (in a set, or across your whole
-// collection) as a TCGplayer Mass Entry want-list. Copy it, open Mass Entry,
-// paste, then optimize the cart to the fewest sellers to minimize shipping —
-// TCGplayer does the seller-matching; we just generate the list.
-export default function WantlistModal({ url, title, onClose }) {
-  const { data, error, loading } = useApi(url, 0)
+// The buy-helper: shows a set of cards as a TCGplayer Mass Entry want-list. Copy
+// it, open Mass Entry, paste, then optimize the cart to the fewest sellers to
+// minimize shipping — TCGplayer does the seller-matching; we just generate the
+// list. Feed it either a `url` (server builds the list — e.g. all missing in a
+// set) or ready-made `lines` (a hand-picked selection built client-side).
+export default function WantlistModal({ url, lines, title, onClose }) {
+  const { data, error, loading } = useApi(lines ? null : url, 0)
   const [copied, setCopied] = useState(false)
-  const text = (data?.lines ?? []).join('\n')
+  const rows = lines ?? data?.lines ?? []
+  const missing = lines ? lines.length : data?.missing ?? 0
+  const ready = lines ? true : !!data
+  const text = rows.join('\n')
 
   useEffect(() => {
     const onKey = (e) => e.key === 'Escape' && onClose()
@@ -49,14 +53,14 @@ export default function WantlistModal({ url, title, onClose }) {
         <h2 className="pb-display text-lg font-semibold text-[var(--ink)]">Buy missing cards</h2>
         <p className="mt-0.5 text-sm text-[var(--dim)]">{title}</p>
 
-        {loading && !data ? (
+        {!ready && loading ? (
           <div className="flex h-40 items-center justify-center text-sm text-[var(--dim)]">building list…</div>
-        ) : error && !data ? (
+        ) : !ready && error ? (
           <p className="mt-4 text-sm text-[var(--accent)]">Couldn’t build the list — {error}.</p>
-        ) : data && data.missing > 0 ? (
+        ) : missing > 0 ? (
           <>
             <p className="mt-3 text-sm text-[var(--ink)]">
-              <span className="font-semibold text-[var(--accent)]">{data.missing.toLocaleString()}</span> cards to
+              <span className="font-semibold text-[var(--accent)]">{missing.toLocaleString()}</span> cards to
               go. Copy this list, open TCGplayer Mass Entry, paste it, then in the cart choose{' '}
               <span className="font-medium">Optimize → fewest sellers</span> to cut shipping.
             </p>
