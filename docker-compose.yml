@@ -40,22 +40,44 @@ services:
     restart: unless-stopped
     logging: *default-logging
 
-  # Hot-reload dev server (opt-in): docker compose --profile dev up frontend-dev
+  # A THROWAWAY backend for the dev server: same image + catalog, but its own
+  # SQLite volume, so you can collect/uncollect freely (e.g. to watch the reveal
+  # animation) without touching your real collection. Reset it any time with
+  #   docker compose --profile dev down   &&   docker volume rm pocketbinder_pocketbinder-dev-data
+  # (first start re-indexes the full catalog into the scratch volume — one-time).
+  backend-dev:
+    profiles: ["dev"]
+    build: ./backend
+    container_name: pocketbinder-backend-dev
+    env_file: .env
+    ports:
+      - "${DEV_API_PORT:-8011}:8000"
+    volumes:
+      - "${CARD_DATA_SRC:-./data/pokemon-tcg-data.example}:/card-data:ro"
+      - "pocketbinder-dev-data:/data"
+    restart: unless-stopped
+    logging: *default-logging
+
+  # Hot-reload dev server (opt-in): docker compose --profile dev up backend-dev frontend-dev
+  # Talks to backend-dev (the scratch collection), NOT the real one — see VITE_PROXY_TARGET.
   frontend-dev:
     profiles: ["dev"]
     build:
       context: ./frontend
       dockerfile: Dockerfile.dev
     container_name: pocketbinder-frontend-dev
+    environment:
+      - VITE_PROXY_TARGET=http://backend-dev:8000
     ports:
       - "5175:5173"
     volumes:
       - ./frontend:/app
       - /app/node_modules
     depends_on:
-      - backend
+      - backend-dev
     restart: unless-stopped
     logging: *default-logging
 
 volumes:
   pocketbinder-data:
+  pocketbinder-dev-data:
