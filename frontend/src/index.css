@@ -3,6 +3,17 @@
 /* Make Tailwind's `dark:` variant follow our toggle (data-theme), not the OS. */
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
+/* Bundled display face — Space Grotesk (variable weight, Latin subset, SIL OFL).
+   Self-hosted so it works offline and needs no CSP change (font-src 'self').
+   Vite hashes the woff2 into /assets. `swap` paints the fallback first. */
+@font-face {
+  font-family: "Space Grotesk";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("./assets/fonts/space-grotesk-latin.woff2") format("woff2");
+}
+
 /* ============================================================
    PocketBinder theme — "Ruby". Light is the default; the header
    toggle flips :root[data-theme] and persists it. Everything
@@ -27,7 +38,7 @@
   --track:     #eadfe1;
   --pocket-sh: inset 0 2px 6px rgba(90,20,35,0.14), inset 0 1px 0 rgba(255,255,255,0.7);
   --shadow:    0 18px 40px -28px rgba(90,20,35,0.42);
-  --font-display: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  --font-display: "Space Grotesk", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
@@ -96,21 +107,17 @@ body { background-color: var(--bg); color: var(--ink); font-family: var(--font-u
 .pb-tint { color: var(--accent); background: var(--accent-tint); border: 1px solid var(--accent-line); }
 .pb-chip-off { color: var(--dim); background: color-mix(in srgb, var(--surface) 78%, transparent); border: 1px dashed var(--accent-line); }
 
-/* The cover-style hero backdrop. */
+/* The value bar: a clean side-to-side gradient — full ruby on the left, grading
+   to the surface (white in light, near-black in dark) on the right. The value
+   sits on the ruby side (white text); the stats sit on the surface side (ink). */
 .pb-cover {
   border: 1px solid var(--accent-line);
-  background:
-    linear-gradient(115deg, color-mix(in srgb, var(--accent-hi) 16%, transparent), transparent 44%),
-    radial-gradient(130% 130% at 12% -25%, color-mix(in srgb, var(--accent) 20%, transparent), transparent 60%),
-    var(--surface);
+  background: linear-gradient(90deg, var(--accent) 0%, var(--surface) 100%);
 }
 
-/* An owned card seats with a foil edge + a faint diagonal sheen. */
+/* An owned card seats with a foil edge (no overlay — the card art shows through
+   cleanly). The reveal still plays its one-shot shine on collect. */
 .pb-seated { box-shadow: 0 0 0 1.5px var(--accent), 0 3px 8px -4px rgba(0,0,0,0.45); }
-.pb-seated::before {
-  content: ""; position: absolute; inset: 0; pointer-events: none;
-  background: linear-gradient(125deg, transparent 40%, var(--sheen) 50%, transparent 60%);
-}
 
 /* --- the card reveal (unowned → owned): flip to colour + holo shine --- */
 @keyframes pb-reveal {
