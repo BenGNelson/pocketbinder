@@ -104,7 +104,7 @@ export default function CardModal({ cardId, onClose, onMutated }) {
         ) : data ? (
           <div className="flex flex-col gap-4 sm:flex-row">
             <div className="mx-auto w-40 shrink-0 sm:mx-0" style={{ filter: glowFilter(CARDS_RGB, 0.45) }}>
-              <CardImage card={data} size="large" className="w-full" />
+              <CardImage card={data} size="large" owned={isOwned} className="w-full" />
             </div>
             <div className="min-w-0 flex-1 space-y-2">
               <div>

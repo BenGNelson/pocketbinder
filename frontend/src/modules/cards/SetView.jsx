@@ -3,7 +3,7 @@ import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { useApi } from '../../lib/useApi.js'
 import { SkeletonLine } from '../../components/ui.jsx'
 import { CARDS_RGB, completionPct } from '../../lib/cards.js'
-import CardImage from './CardImage.jsx'
+import CardTile from './CardTile.jsx'
 import CardModal from './CardModal.jsx'
 import WantlistModal from './WantlistModal.jsx'
 
@@ -100,15 +100,15 @@ export default function SetView() {
           ) : (
             <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-6">
               {cards.map((c) => (
-                <button
+                <CardTile
                   key={c.id}
-                  onClick={() => setModalId(c.id)}
-                  className="block text-left active:scale-95"
-                  title={c.name}
-                >
-                  <CardImage card={c} dim={!c.owned} />
-                  <span className="mt-1 block truncate text-xs text-slate-400">#{c.number}</span>
-                </button>
+                  card={c}
+                  label={`#${c.number}`}
+                  onOpen={setModalId}
+                  onOwnedChange={(id, owned) =>
+                    setEdits((e) => ({ ...e, [id]: { owned, qty: owned ? 1 : 0 } }))
+                  }
+                />
               ))}
             </div>
           )}

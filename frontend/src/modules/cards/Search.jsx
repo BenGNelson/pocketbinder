@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useApi } from '../../lib/useApi.js'
-import CardImage from './CardImage.jsx'
+import CardTile from './CardTile.jsx'
 import CardModal from './CardModal.jsx'
 
 // Search across every card by name, with an "owned only" toggle. Both the query
@@ -69,15 +69,13 @@ export default function Search() {
       ) : (
         <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-6">
           {items.map((c) => (
-            <button
+            <CardTile
               key={c.id}
-              onClick={() => setModalId(c.id)}
-              className="block text-left active:scale-95"
-              title={c.name}
-            >
-              <CardImage card={c} dim={!c.owned} />
-              <span className="mt-1 block truncate text-xs text-slate-300">{c.name}</span>
-            </button>
+              card={c}
+              label={c.name}
+              onOpen={setModalId}
+              onOwnedChange={(id, owned) => setEdits((e) => ({ ...e, [id]: { owned } }))}
+            />
           ))}
         </div>
       )}

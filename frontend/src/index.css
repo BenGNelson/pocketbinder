@@ -6,3 +6,42 @@ html {
   background-color: var(--color-slate-950);
   color-scheme: dark;
 }
+
+/* --- "Card reveal" -------------------------------------------------------
+   When a card goes from unowned (grey, dimmed) to owned, it flips to full
+   colour with a pop and a one-shot holographic shine sweeps across it — turning
+   "marking a card" into a little collecting moment. Fire-and-forget: the classes
+   are added on the owned transition and removed on animationend, so it never
+   blocks the next tap. Fully disabled under prefers-reduced-motion. */
+@keyframes pb-reveal {
+  0%   { transform: perspective(700px) rotateY(-72deg) scale(0.9); filter: grayscale(1) brightness(1.5); }
+  55%  { transform: perspective(700px) rotateY(0deg) scale(1.09);  filter: grayscale(0) brightness(1.12); }
+  100% { transform: perspective(700px) rotateY(0deg) scale(1);     filter: none; }
+}
+
+@keyframes pb-shine {
+  0%   { opacity: 0;    transform: translateX(-130%) skewX(-18deg); }
+  30%  { opacity: 0.85; }
+  100% { opacity: 0;    transform: translateX(130%) skewX(-18deg); }
+}
+
+.pb-reveal {
+  animation: pb-reveal 500ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  will-change: transform, filter;
+}
+
+/* The shine is a pseudo-element clipped to the (overflow-hidden) card face. */
+.pb-shine::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(75deg, transparent 34%, rgba(255, 255, 255, 0.7) 50%, transparent 66%);
+  mix-blend-mode: screen;
+  animation: pb-shine 650ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pb-reveal { animation: none; }
+  .pb-shine::after { content: none; animation: none; }
+}

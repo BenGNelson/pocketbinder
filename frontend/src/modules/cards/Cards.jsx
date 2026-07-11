@@ -64,6 +64,8 @@ export default function Cards() {
         <ImportBanner result={importResult} onDismiss={() => setImportResult(null)} />
       )}
 
+      <ImportHelp />
+
       {catalogEmpty ? (
         <BuildingCatalog sync={sync} />
       ) : (
@@ -287,6 +289,42 @@ function ImportBanner({ result, onDismiss }) {
         ✕
       </button>
     </div>
+  )
+}
+
+// A collapsed disclosure explaining the import file format, with a downloadable
+// sample generated in-browser (no server round-trip). Set code OR dataset id.
+function ImportHelp() {
+  const sample =
+    ['setid,number,qty', 'BS,4,1', 'base1,58,2', 'swsh1,1,1'].join('\n') + '\n'
+  const href = `data:text/csv;charset=utf-8,${encodeURIComponent(sample)}`
+  return (
+    <details className="rounded-xl border border-slate-800 bg-slate-900/40 p-3 text-sm text-slate-400">
+      <summary className="cursor-pointer select-none text-slate-300">
+        Import a whole collection from a file
+      </summary>
+      <div className="mt-2 space-y-2">
+        <p>
+          One row per card — a CSV with a header row, or a JSON list. Required columns{' '}
+          <code className="rounded bg-slate-800 px-1">setid,number</code>; optional{' '}
+          <code className="rounded bg-slate-800 px-1">variant,qty,condition,wishlist,notes</code>.
+        </p>
+        <p>
+          <code className="rounded bg-slate-800 px-1">setid</code> can be the set code you know (
+          <code className="rounded bg-slate-800 px-1">BS</code>) or the dataset id (
+          <code className="rounded bg-slate-800 px-1">base1</code>);{' '}
+          <code className="rounded bg-slate-800 px-1">number</code> is the card’s collector number.
+          Re-importing refreshes these rows but keeps anything you’ve edited in the app.
+        </p>
+        <a
+          href={href}
+          download="pocketbinder-sample.csv"
+          className="inline-block rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 font-medium text-slate-200 active:scale-95"
+        >
+          Download sample.csv
+        </a>
+      </div>
+    </details>
   )
 }
 
