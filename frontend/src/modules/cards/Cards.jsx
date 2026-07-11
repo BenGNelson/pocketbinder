@@ -1,20 +1,16 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useApi, API_BASE } from '../../lib/useApi.js'
-import { radiantBackdrop, glowFilter } from '../../lib/glow.js'
 import { SkeletonLine } from '../../components/ui.jsx'
-import { CARDS_RGB, setHref, cardsSearchHref, completionPct, formatUsd } from '../../lib/cards.js'
+import { setHref, cardsSearchHref, completionPct, formatUsd } from '../../lib/cards.js'
 import CardImage from './CardImage.jsx'
 import CardModal from './CardModal.jsx'
 import WantlistModal from './WantlistModal.jsx'
 
-// The Cards hub: your Pokémon TCG collection. A back-lit stats hero (the one
-// radiance moment), a show-off wall of the cards you own, and a grid of every
-// set with a completion bar. Tap cards to mark them owned, or seed your
-// collection from a CSV/JSON import. Mobile-first.
+// The Cards hub: your Pokémon TCG collection as a binder. A cover-style value
+// hero, a show-off wall of the cards you own, and a grid of every set with a
+// foil completion bar. Tap cards to seat them, or seed from a CSV/JSON import.
 export default function Cards() {
-  // The indexer status polls a little faster so the first-run "building the
-  // catalog…" state clears promptly once the ~20k-card ingest finishes.
   // Bumped after an ownership edit (or import) to re-fetch stats/sets/showcase so
   // the hub reflects it immediately (the `_r` param is ignored by the backend).
   const [reloadKey, setReloadKey] = useState(0)
@@ -28,25 +24,21 @@ export default function Cards() {
   const [showWantlist, setShowWantlist] = useState(false)
   const navigate = useNavigate()
 
-  // The catalog clone isn't mounted — nothing to browse yet.
   if (sync && !sync.configured) return <NotConfigured />
 
   const sets = setsData?.sets ?? []
   const owned = showcase?.items ?? []
-  // "Building…" only makes sense while the indexer is actually enabled — with it
-  // disabled and nothing indexed, fall through to the (empty) hub instead of a
-  // spinner that never resolves.
   const catalogEmpty = sync && sync.indexed === 0 && sync.enabled
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-3">
-        <h2 className="text-xl font-semibold">Pokémon Cards</h2>
+        <h2 className="pb-display text-lg font-semibold text-[var(--ink)]">Your binder</h2>
         <div className="ml-auto flex items-center gap-2">
           {(stats?.owned_unique ?? 0) > 0 && (
             <button
               onClick={() => setShowWantlist(true)}
-              className="rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 text-sm font-medium text-slate-200 active:scale-95"
+              className="pb-btn-ghost rounded-xl px-3 py-2 text-sm font-medium active:scale-95"
             >
               Shopping list
             </button>
@@ -54,15 +46,13 @@ export default function Cards() {
           <ImportButton
             onResult={(r) => {
               setImportResult(r)
-              refresh() // reflect the imported cards immediately
+              refresh()
             }}
           />
         </div>
       </div>
 
-      {importResult && (
-        <ImportBanner result={importResult} onDismiss={() => setImportResult(null)} />
-      )}
+      {importResult && <ImportBanner result={importResult} onDismiss={() => setImportResult(null)} />}
 
       <ImportHelp />
 
@@ -83,7 +73,7 @@ export default function Cards() {
               type="search"
               placeholder="Search every card by name…"
               aria-label="Search cards"
-              className="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-slate-100 placeholder-slate-500 outline-none focus:border-fuchsia-500/50"
+              className="pb-input w-full rounded-xl px-4 py-3"
             />
           </form>
 
@@ -92,9 +82,7 @@ export default function Cards() {
         </>
       )}
 
-      {modalId && (
-        <CardModal cardId={modalId} onClose={() => setModalId(null)} onMutated={refresh} />
-      )}
+      {modalId && <CardModal cardId={modalId} onClose={() => setModalId(null)} onMutated={refresh} />}
       {showWantlist && (
         <WantlistModal
           url="/cards/wantlist"
@@ -106,50 +94,55 @@ export default function Cards() {
   )
 }
 
-// The back-lit hero: headline collection figures on a fuchsia radiance. The one
-// glowing surface (the sets grid below stays calm) — per the back-lit motif.
+// The cover: your collection value (or card count) as one big foil number.
 function Hero({ stats }) {
   const s = stats ?? {}
   const value = formatUsd(s.total_value_usd)
-  const tiles = [
-    { label: 'Cards owned', value: fmt(s.owned_unique) },
-    { label: 'Total copies', value: fmt(s.owned_total_qty) },
-    { label: 'Sets completed', value: `${fmt(s.sets_completed)}${s.sets ? ` / ${fmt(s.sets)}` : ''}` },
-    { label: 'Catalog complete', value: s.completion_pct != null ? `${s.completion_pct}%` : '—' },
-  ]
-  if (value) tiles.push({ label: 'Market value', value })
-
   return (
-    <div
-      className="rounded-2xl border p-4 sm:p-5"
-      style={{ borderColor: `rgba(${CARDS_RGB},0.35)`, background: radiantBackdrop(CARDS_RGB, 0.18) }}
-    >
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-5">
-        {tiles.map((t) => (
-          <div key={t.label} className="min-w-0">
-            <div
-              className="text-2xl font-semibold tabular-nums text-slate-100"
-              style={{ filter: glowFilter(CARDS_RGB, 0.35) }}
-            >
-              {t.value}
-            </div>
-            <div className="truncate text-xs uppercase tracking-wide text-slate-400">{t.label}</div>
+    <section className="pb-cover rounded-2xl p-5">
+      <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
+        <div className="min-w-0">
+          <div className="text-[10px] uppercase tracking-[0.16em] text-[var(--dim)]">
+            {value ? 'Binder value' : 'Your binder'}
           </div>
-        ))}
+          <div className="pb-val pb-display mt-1 text-4xl font-bold leading-none">
+            {value ?? fmt(s.owned_unique)}
+          </div>
+          <div className="mt-2 text-xs text-[var(--dim)]">
+            {value ? `${fmt(s.owned_unique)} cards owned` : 'cards owned'}
+            {s.sets_completed
+              ? ` · ${fmt(s.sets_completed)} set${s.sets_completed === 1 ? '' : 's'} complete`
+              : ''}
+          </div>
+        </div>
+        <div className="flex gap-6">
+          <Stat label="Owned" value={fmt(s.owned_unique)} />
+          <Stat label="Copies" value={fmt(s.owned_total_qty)} />
+          <Stat label="Catalog" value={s.completion_pct != null ? `${s.completion_pct}%` : '—'} />
+        </div>
       </div>
+    </section>
+  )
+}
+
+function Stat({ label, value }) {
+  return (
+    <div className="text-right">
+      <div className="pb-display text-xl font-bold tabular-nums text-[var(--ink)]">{value}</div>
+      <div className="text-[10px] uppercase tracking-wide text-[var(--dim)]">{label}</div>
     </div>
   )
 }
 
-// The show-off wall: the cards you own, big. Empty until you import a collection.
+// The show-off wall: the cards you own, big. Empty until you start collecting.
 function ShowcaseWall({ cards, stats, onOpen }) {
   if (!cards.length) {
     return (
       <section className="space-y-2">
         <ShelfHeading>Your collection</ShelfHeading>
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6 text-sm text-slate-400">
-          Nothing here yet. Open a set and tap the cards you own — they’ll light up and show off
-          here. Got a big collection already? Use <span className="text-slate-200">Import</span> above.
+        <div className="pb-card rounded-2xl p-6 text-sm text-[var(--dim)]">
+          Nothing here yet. Open a set and tap the cards you own — they’ll light up and show off here.
+          Got a big collection already? Use <span className="text-[var(--ink)]">Import</span> above.
         </div>
       </section>
     )
@@ -159,14 +152,16 @@ function ShowcaseWall({ cards, stats, onOpen }) {
     <section className="space-y-2">
       <div className="flex items-center justify-between">
         <ShelfHeading>Your collection</ShelfHeading>
-        <Link to={cardsSearchHref('', { owned: true })} className="text-xs text-slate-400 active:text-slate-200">
+        <Link to={cardsSearchHref('', { owned: true })} className="text-xs text-[var(--dim)] hover:text-[var(--ink)]">
           {total > cards.length ? `See all ${fmt(total)} ›` : 'Search yours ›'}
         </Link>
       </div>
       <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-6">
         {cards.map((c) => (
-          <button key={c.id} onClick={() => onOpen(c.id)} className="block text-left active:scale-95">
-            <CardImage card={c} />
+          <button key={c.id} onClick={() => onOpen(c.id)} className="block text-left active:scale-[0.97]">
+            <div className="pb-pocket rounded-[11px] p-1">
+              <CardImage card={c} owned />
+            </div>
           </button>
         ))}
       </div>
@@ -174,18 +169,16 @@ function ShowcaseWall({ cards, stats, onOpen }) {
   )
 }
 
-// Every set as a calm typographic tile with a completion bar (no external logos —
-// the CSP blocks external image hosts, so set art wouldn't load; the card faces
-// inside a set carry the visuals). Newest release first.
+// Every set as a tile with a foil completion bar. Newest release first.
 function SetsGrid({ sets, loading, error }) {
   return (
     <section className="space-y-2">
       <ShelfHeading>Sets</ShelfHeading>
-      {error && <p className="text-sm text-rose-400">unavailable — {error}</p>}
+      {error && <p className="text-sm text-[var(--accent)]">unavailable — {error}</p>}
       {loading ? (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="rounded-2xl border border-slate-800 bg-slate-900/40 p-4">
+            <div key={i} className="pb-card rounded-2xl p-4">
               <SkeletonLine className="h-4 w-28" />
               <SkeletonLine className="mt-3 h-2 w-full" />
             </div>
@@ -206,25 +199,19 @@ function SetCard({ s }) {
   const pct = completionPct(s.owned, s.card_count)
   const year = s.release_date ? s.release_date.slice(0, 4) : null
   return (
-    <Link
-      to={setHref(s.setid)}
-      className="block rounded-2xl border border-slate-800 bg-slate-900/60 p-4 transition-colors active:bg-slate-800"
-    >
+    <Link to={setHref(s.setid)} className="pb-card block rounded-2xl p-4 transition-colors hover:border-[var(--accent-line)]">
       <div className="flex items-baseline justify-between gap-2">
-        <span className="min-w-0 truncate font-medium text-slate-100">{s.name}</span>
-        {year && <span className="shrink-0 text-xs text-slate-500">{year}</span>}
+        <span className="min-w-0 truncate font-medium text-[var(--ink)]">{s.name}</span>
+        {year && <span className="shrink-0 text-xs text-[var(--dim)]">{year}</span>}
       </div>
-      <div className="mt-1 flex items-center justify-between text-xs text-slate-400">
-        <span className="truncate">{s.series || ' '}</span>
+      <div className="mt-1 flex items-center justify-between text-xs text-[var(--dim)]">
+        <span className="truncate">{s.series || ' '}</span>
         <span className="shrink-0 tabular-nums">
           {fmt(s.owned)} / {fmt(s.card_count)}
         </span>
       </div>
-      <span className="mt-2 block h-1.5 overflow-hidden rounded bg-slate-800">
-        <span
-          className="block h-full"
-          style={{ width: `${pct}%`, background: `rgb(${CARDS_RGB})` }}
-        />
+      <span className="pb-bar mt-2 block h-1.5 rounded">
+        <span style={{ width: `${pct}%` }} />
       </span>
     </Link>
   )
@@ -247,11 +234,11 @@ function ImportButton({ onResult }) {
       onResult({ error: err.message })
     } finally {
       setBusy(false)
-      e.target.value = '' // allow re-importing the same file
+      e.target.value = ''
     }
   }
   return (
-    <label className="cursor-pointer rounded-xl border border-fuchsia-500/30 bg-fuchsia-500/10 px-3 py-2 text-sm font-medium text-fuchsia-200 active:scale-95">
+    <label className="pb-btn-accent cursor-pointer rounded-xl px-3 py-2 text-sm font-medium active:scale-95">
       {busy ? 'Importing…' : 'Import'}
       <input type="file" accept=".csv,.json,text/csv,application/json" onChange={onFile} className="hidden" />
     </label>
@@ -263,63 +250,57 @@ function ImportBanner({ result, onDismiss }) {
   return (
     <div
       className={`flex items-start justify-between gap-3 rounded-xl border p-3 text-sm ${
-        ok ? 'border-emerald-500/30 bg-emerald-500/10' : 'border-rose-500/30 bg-rose-500/10'
+        ok ? 'border-emerald-500/40 bg-emerald-500/10' : 'border-[var(--accent-line)] bg-[var(--accent-tint)]'
       }`}
     >
-      <div className="min-w-0">
+      <div className="min-w-0 text-[var(--ink)]">
         {ok ? (
           <>
-            <span className="text-slate-200">
-              Imported <span className="font-semibold">{fmt(result.imported)}</span> cards
-              {result.skipped > 0 && ` · ${fmt(result.skipped)} kept from your edits`}
-              {result.unmatched?.length > 0 && ` · ${fmt(result.unmatched.length)} unmatched`}.
-            </span>
+            Imported <span className="font-semibold">{fmt(result.imported)}</span> cards
+            {result.skipped > 0 && ` · ${fmt(result.skipped)} kept from your edits`}
+            {result.unmatched?.length > 0 && ` · ${fmt(result.unmatched.length)} unmatched`}.
             {result.unmatched?.length > 0 && (
-              <p className="mt-1 truncate text-xs text-slate-500">
+              <p className="mt-1 truncate text-xs text-[var(--dim)]">
                 No catalog match: {result.unmatched.slice(0, 8).join(', ')}
                 {result.unmatched.length > 8 ? '…' : ''}
               </p>
             )}
           </>
         ) : (
-          <span className="text-rose-300">Import failed — {result.error}</span>
+          <span className="text-[var(--accent)]">Import failed — {result.error}</span>
         )}
       </div>
-      <button onClick={onDismiss} aria-label="Dismiss" className="shrink-0 text-slate-500 active:text-slate-300">
+      <button onClick={onDismiss} aria-label="Dismiss" className="shrink-0 text-[var(--dim)] hover:text-[var(--ink)]">
         ✕
       </button>
     </div>
   )
 }
 
-// A collapsed disclosure explaining the import file format, with a downloadable
-// sample generated in-browser (no server round-trip). Set code OR dataset id.
+// A collapsed disclosure explaining the import format, with a downloadable sample
+// generated in-browser (no server round-trip). Set code OR dataset id.
 function ImportHelp() {
-  const sample =
-    ['setid,number,qty', 'BS,4,1', 'base1,58,2', 'swsh1,1,1'].join('\n') + '\n'
+  const sample = ['setid,number,qty', 'BS,4,1', 'base1,58,2', 'swsh1,1,1'].join('\n') + '\n'
   const href = `data:text/csv;charset=utf-8,${encodeURIComponent(sample)}`
   return (
-    <details className="rounded-xl border border-slate-800 bg-slate-900/40 p-3 text-sm text-slate-400">
-      <summary className="cursor-pointer select-none text-slate-300">
+    <details className="pb-card rounded-xl p-3 text-sm text-[var(--dim)]">
+      <summary className="cursor-pointer select-none text-[var(--ink)]">
         Import a whole collection from a file
       </summary>
       <div className="mt-2 space-y-2">
         <p>
           One row per card — a CSV with a header row, or a JSON list. Required columns{' '}
-          <code className="rounded bg-slate-800 px-1">setid,number</code>; optional{' '}
-          <code className="rounded bg-slate-800 px-1">variant,qty,condition,wishlist,notes</code>.
+          <Code>setid,number</Code>; optional <Code>variant,qty,condition,wishlist,notes</Code>.
         </p>
         <p>
-          <code className="rounded bg-slate-800 px-1">setid</code> can be the set code you know (
-          <code className="rounded bg-slate-800 px-1">BS</code>) or the dataset id (
-          <code className="rounded bg-slate-800 px-1">base1</code>);{' '}
-          <code className="rounded bg-slate-800 px-1">number</code> is the card’s collector number.
-          Re-importing refreshes these rows but keeps anything you’ve edited in the app.
+          <Code>setid</Code> can be the set code you know (<Code>BS</Code>) or the dataset id (
+          <Code>base1</Code>); <Code>number</Code> is the card’s collector number. Re-importing refreshes
+          these rows but keeps anything you’ve edited in the app.
         </p>
         <a
           href={href}
           download="pocketbinder-sample.csv"
-          className="inline-block rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 font-medium text-slate-200 active:scale-95"
+          className="pb-btn-ghost inline-block rounded-lg px-3 py-1.5 font-medium active:scale-95"
         >
           Download sample.csv
         </a>
@@ -328,11 +309,15 @@ function ImportHelp() {
   )
 }
 
+function Code({ children }) {
+  return <code className="rounded bg-[var(--pocket)] px-1 text-[var(--ink)]">{children}</code>
+}
+
 function BuildingCatalog({ sync }) {
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-6">
-      <p className="text-slate-200">Building the card catalog…</p>
-      <p className="mt-2 text-sm text-slate-400">
+    <div className="pb-card rounded-2xl p-6">
+      <p className="text-[var(--ink)]">Building the card catalog…</p>
+      <p className="mt-2 text-sm text-[var(--dim)]">
         Indexing every Pokémon set — this runs once and takes a moment
         {sync?.total ? ` (${fmt(sync.processed)} / ${fmt(sync.total)} cards)` : ''}. It’ll fill in
         automatically.
@@ -344,15 +329,13 @@ function BuildingCatalog({ sync }) {
 function NotConfigured() {
   return (
     <div className="space-y-5">
-      <h2 className="text-xl font-semibold">Pokémon Cards</h2>
-      <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
-        <p className="text-amber-400">Card catalog not set up yet.</p>
-        <p className="mt-2 text-sm text-slate-400">
-          Clone the public{' '}
-          <code className="rounded bg-slate-800 px-1">pokemon-tcg-data</code> dataset to a folder and
-          point <code className="rounded bg-slate-800 px-1">CARD_DATA_SRC</code> at it in{' '}
-          <code className="rounded bg-slate-800 px-1">.env</code>. The catalog (every set + card)
-          then indexes automatically; card images are fetched on demand. See the Server Guide.
+      <h2 className="pb-display text-lg font-semibold text-[var(--ink)]">Your binder</h2>
+      <div className="pb-card rounded-xl p-6">
+        <p className="text-[var(--accent)]">Card catalog not set up yet.</p>
+        <p className="mt-2 text-sm text-[var(--dim)]">
+          Clone the public <Code>pokemon-tcg-data</Code> dataset to a folder and point{' '}
+          <Code>CARD_DATA_SRC</Code> at it in <Code>.env</Code>. The catalog then indexes automatically;
+          card images are fetched on demand. See the README.
         </p>
       </div>
     </div>
@@ -360,7 +343,7 @@ function NotConfigured() {
 }
 
 function ShelfHeading({ children }) {
-  return <h3 className="text-sm font-medium uppercase tracking-wide text-slate-500">{children}</h3>
+  return <h3 className="text-sm font-medium uppercase tracking-wide text-[var(--dim)]">{children}</h3>
 }
 
 function fmt(n) {

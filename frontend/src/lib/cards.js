@@ -1,9 +1,5 @@
 import { API_BASE } from './useApi.js'
 
-// The app accent (fuchsia) as an "r,g,b" string, for the back-lit radiance motif
-// on the hub hero + show-off wall.
-export const CARDS_RGB = '217,70,239' // fuchsia-500
-
 // A card face, served same-origin through the backend proxy (never the external
 // CDN — the proxy caches a downscaled WebP, and the CSP blocks external image
 // hosts). size: 'small' (grid thumb) | 'large' (detail face).

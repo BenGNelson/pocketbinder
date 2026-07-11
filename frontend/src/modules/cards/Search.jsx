@@ -12,7 +12,6 @@ export default function Search() {
   const query = params.get('q') || ''
   const ownedOnly = params.get('owned') === '1'
   const [modalId, setModalId] = useState(null)
-  // Optimistic ownership edits overlaid on results (instant dim/un-dim, no re-fetch).
   const [edits, setEdits] = useState({})
 
   const patch = (mut) => {
@@ -23,22 +22,18 @@ export default function Search() {
   const setQuery = (val) => patch((n) => (val ? n.set('q', val) : n.delete('q')))
   const setOwnedOnly = (on) => patch((n) => (on ? n.set('owned', '1') : n.delete('owned')))
 
-  // Debounce isn't needed — the query is a substring LIKE over an indexed name
-  // column; the endpoint caps results. Poll off (0): re-runs on URL change only.
   const q = encodeURIComponent(query.trim())
   const { data, loading } = useApi(`/cards/search?q=${q}&owned=${ownedOnly ? 1 : 0}`, 0)
-  const items = (data?.items ?? []).map((c) =>
-    edits[c.id] ? { ...c, owned: edits[c.id].owned } : c,
-  )
+  const items = (data?.items ?? []).map((c) => (edits[c.id] ? { ...c, owned: edits[c.id].owned } : c))
 
   return (
     <div className="space-y-4">
-      <nav className="flex flex-wrap items-center gap-1 text-sm text-slate-400">
-        <Link to="/cards" className="hover:text-slate-200">
+      <nav className="flex flex-wrap items-center gap-1 text-sm text-[var(--dim)]">
+        <Link to="/cards" className="hover:text-[var(--ink)]">
           Cards
         </Link>
-        <span className="px-1 text-slate-600">/</span>
-        <span className="text-slate-200">Search</span>
+        <span className="px-1 opacity-60">/</span>
+        <span className="text-[var(--ink)]">Search</span>
       </nav>
 
       <input
@@ -48,22 +43,22 @@ export default function Search() {
         placeholder={data ? `Search ${data.total.toLocaleString()} cards…` : 'Search cards…'}
         aria-label="Search cards"
         autoFocus
-        className="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-slate-100 placeholder-slate-500 outline-none focus:border-fuchsia-500/50"
+        className="pb-input w-full rounded-xl px-4 py-3"
       />
-      <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-slate-300">
+      <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-[var(--ink)]">
         <input
           type="checkbox"
           checked={ownedOnly}
           onChange={(e) => setOwnedOnly(e.target.checked)}
-          className="accent-fuchsia-500"
+          className="accent-[var(--accent)]"
         />
         Owned only
       </label>
 
       {loading && !data ? (
-        <p className="text-sm text-slate-500">searching…</p>
+        <p className="text-sm text-[var(--dim)]">searching…</p>
       ) : items.length === 0 ? (
-        <p className="text-sm text-slate-400">
+        <p className="text-sm text-[var(--dim)]">
           {query.trim() || ownedOnly ? 'No matching cards.' : 'Type to search, or browse a set.'}
         </p>
       ) : (

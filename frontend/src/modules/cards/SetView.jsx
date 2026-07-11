@@ -2,14 +2,15 @@ import { useMemo, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { useApi } from '../../lib/useApi.js'
 import { SkeletonLine } from '../../components/ui.jsx'
-import { CARDS_RGB, completionPct } from '../../lib/cards.js'
+import { completionPct } from '../../lib/cards.js'
 import CardTile from './CardTile.jsx'
 import CardModal from './CardModal.jsx'
 import WantlistModal from './WantlistModal.jsx'
 
-// One set: its completion header + a grid of EVERY card, with the ones you own in
-// full colour and the ones you don't dimmed — so the gaps in your collection read
-// at a glance. An "owned only" toggle (kept in the URL) filters to what you have.
+// One set: its completion header + a grid of EVERY card seated in binder pockets,
+// with the ones you own in full colour and the ones you don't dimmed — so the
+// gaps read at a glance. Tap a card's badge to seat it; an "owned only" toggle
+// (kept in the URL) filters to what you have.
 export default function SetView() {
   const { setid } = useParams()
   const { data, loading, error } = useApi(`/cards/sets/${encodeURIComponent(setid)}`, 0)
@@ -17,8 +18,6 @@ export default function SetView() {
   const ownedOnly = params.get('owned') === '1'
   const [modalId, setModalId] = useState(null)
   const [showWantlist, setShowWantlist] = useState(false)
-  // Optimistic ownership edits ({cardId: {owned, qty}}) overlaid on the fetched
-  // cards, so marking a card owned is instant with no grid re-fetch/flash.
   const [edits, setEdits] = useState({})
 
   const setOwnedOnly = (on) => {
@@ -29,7 +28,6 @@ export default function SetView() {
   }
 
   const meta = data?.set
-  // Overlay optimistic edits, then derive the (live) owned count + filtered grid.
   const allCards = useMemo(
     () =>
       (data?.cards ?? []).map((c) =>
@@ -42,50 +40,44 @@ export default function SetView() {
 
   return (
     <div className="space-y-4">
-      <nav className="flex flex-wrap items-center gap-1 text-sm text-slate-400">
-        <Link to="/cards" className="hover:text-slate-200">
+      <nav className="flex flex-wrap items-center gap-1 text-sm text-[var(--dim)]">
+        <Link to="/cards" className="hover:text-[var(--ink)]">
           Cards
         </Link>
-        <span className="px-1 text-slate-600">/</span>
-        <span className="text-slate-200">{meta?.name || setid}</span>
+        <span className="px-1 opacity-60">/</span>
+        <span className="text-[var(--ink)]">{meta?.name || setid}</span>
       </nav>
 
-      {error && <p className="text-sm text-rose-400">unavailable — {error}</p>}
+      {error && <p className="text-sm text-[var(--accent)]">unavailable — {error}</p>}
       {loading && !data && <HeaderSkeleton />}
 
       {meta && (
         <>
           <header className="space-y-2">
             <div className="flex items-baseline justify-between gap-3">
-              <h2 className="text-xl font-semibold">{meta.name}</h2>
-              <span className="shrink-0 text-sm tabular-nums text-slate-400">
+              <h2 className="pb-display text-xl font-semibold text-[var(--ink)]">{meta.name}</h2>
+              <span className="shrink-0 text-sm tabular-nums text-[var(--dim)]">
                 {ownedCount.toLocaleString()} / {meta.card_count.toLocaleString()} ·{' '}
                 {completionPct(ownedCount, meta.card_count)}%
               </span>
             </div>
-            <span className="block h-1.5 overflow-hidden rounded bg-slate-800">
-              <span
-                className="block h-full"
-                style={{
-                  width: `${completionPct(ownedCount, meta.card_count)}%`,
-                  background: `rgb(${CARDS_RGB})`,
-                }}
-              />
+            <span className="pb-bar block h-1.5 rounded">
+              <span style={{ width: `${completionPct(ownedCount, meta.card_count)}%` }} />
             </span>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-              <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-slate-300">
+              <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-[var(--ink)]">
                 <input
                   type="checkbox"
                   checked={ownedOnly}
                   onChange={(e) => setOwnedOnly(e.target.checked)}
-                  className="accent-fuchsia-500"
+                  className="accent-[var(--accent)]"
                 />
                 Owned only
               </label>
               {meta.card_count - ownedCount > 0 && (
                 <button
                   onClick={() => setShowWantlist(true)}
-                  className="rounded-lg border border-fuchsia-500/30 bg-fuchsia-500/10 px-3 py-1.5 text-sm font-medium text-fuchsia-200 active:scale-95"
+                  className="pb-tint rounded-lg px-3 py-1.5 text-sm font-medium active:scale-95"
                 >
                   Buy missing ({(meta.card_count - ownedCount).toLocaleString()})
                 </button>
@@ -94,7 +86,7 @@ export default function SetView() {
           </header>
 
           {cards.length === 0 ? (
-            <p className="text-sm text-slate-400">
+            <p className="text-sm text-[var(--dim)]">
               {ownedOnly ? 'You don’t own any cards from this set yet.' : 'No cards in this set.'}
             </p>
           ) : (

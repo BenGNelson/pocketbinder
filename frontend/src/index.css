@@ -1,46 +1,134 @@
 @import "tailwindcss";
 
-/* Paint the root the darkest neutral so no white shows through (iOS status bar,
-   overscroll bounce). PocketBinder is dark-only. */
-html {
-  background-color: var(--color-slate-950);
-  color-scheme: dark;
+/* Make Tailwind's `dark:` variant follow our toggle (data-theme), not the OS. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/* ============================================================
+   PocketBinder theme — "Ruby". Light is the default; the header
+   toggle flips :root[data-theme] and persists it. Everything
+   colour-related is a token so both themes stay in sync.
+   ============================================================ */
+:root {
+  color-scheme: light;
+  --bg:        #f6f1f2;
+  --surface:   #ffffff;
+  --raised:    #faf5f6;
+  --pocket:    #efe6e8;
+  --ink:       #2a1418;
+  --dim:       #8a6b72;
+  --line:      #ecdfe2;
+  --accent:    #e11d48;
+  --accent-hi: #fb7185;
+  --accent-lo: #9f1239;
+  --accent-ink:#ffffff;
+  --accent-tint:rgba(225,29,72,0.10);
+  --accent-line:rgba(225,29,72,0.30);
+  --sheen:     rgba(255,255,255,0.62);
+  --track:     #eadfe1;
+  --pocket-sh: inset 0 2px 6px rgba(90,20,35,0.14), inset 0 1px 0 rgba(255,255,255,0.7);
+  --shadow:    0 18px 40px -28px rgba(90,20,35,0.42);
+  --font-display: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
-/* --- "Card reveal" -------------------------------------------------------
-   When a card goes from unowned (grey, dimmed) to owned, it flips to full
-   colour with a pop and a one-shot holographic shine sweeps across it — turning
-   "marking a card" into a little collecting moment. Fire-and-forget: the classes
-   are added on the owned transition and removed on animationend, so it never
-   blocks the next tap. Fully disabled under prefers-reduced-motion. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg:        #130809;
+  --surface:   #1c0d10;
+  --raised:    #241116;
+  --pocket:    #120608;
+  --ink:       #f8e9ee;
+  --dim:       #c69aa5;
+  --line:      #351319;
+  --accent:    #f43f5e;
+  --accent-hi: #ff8a9e;
+  --accent-lo: #be123c;
+  --accent-ink:#2c0709;
+  --accent-tint:rgba(244,63,94,0.15);
+  --accent-line:rgba(244,63,94,0.32);
+  --sheen:     rgba(255,205,205,0.40);
+  --track:     #2a1013;
+  --pocket-sh: inset 0 2px 7px rgba(0,0,0,0.65), inset 0 0 0 1px rgba(255,255,255,0.03);
+  --shadow:    0 18px 44px -26px rgba(0,0,0,0.82);
+}
+
+html { background-color: var(--bg); }
+body { background-color: var(--bg); color: var(--ink); font-family: var(--font-ui); }
+
+/* --- primitives (kept small; layout stays in Tailwind utilities) --- */
+.pb-display { font-family: var(--font-display); }
+
+.pb-card { background: var(--surface); border: 1px solid var(--line); }
+
+/* A recessed binder pocket that a card seats into. */
+.pb-pocket { background: var(--pocket); box-shadow: var(--pocket-sh); }
+
+/* The wordmark: "Pocket" is foil, "Binder" is ink. */
+.pb-wm .p {
+  background: linear-gradient(180deg, var(--accent-hi), var(--accent-lo));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.pb-ring { border: 2.5px solid var(--accent); box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 55%, transparent); }
+
+/* Foil accents: chips, the value number, buttons, progress fill. */
+.pb-foil {
+  color: var(--accent-ink);
+  background: linear-gradient(180deg, var(--accent-hi), var(--accent));
+  box-shadow: 0 1px 0 rgba(255,255,255,0.35) inset;
+}
+.pb-val {
+  background: linear-gradient(180deg, var(--accent-hi), var(--accent) 58%, var(--accent-lo));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.pb-bar { background: var(--track); overflow: hidden; }
+.pb-bar > span {
+  display: block; height: 100%;
+  background: linear-gradient(90deg, var(--accent-lo), var(--accent-hi), var(--accent));
+  box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+.pb-topbar { background: color-mix(in srgb, var(--bg) 84%, transparent); }
+.pb-input { background: var(--surface); border: 1px solid var(--line); color: var(--ink); }
+.pb-input::placeholder { color: var(--dim); }
+.pb-input:focus { outline: none; border-color: var(--accent); }
+.pb-btn-accent { color: var(--accent-ink); background: linear-gradient(180deg, var(--accent-hi), var(--accent)); border: 1px solid var(--accent-lo); }
+.pb-btn-ghost { color: var(--ink); background: var(--raised); border: 1px solid var(--line); }
+.pb-tint { color: var(--accent); background: var(--accent-tint); border: 1px solid var(--accent-line); }
+.pb-chip-off { color: var(--dim); background: color-mix(in srgb, var(--surface) 78%, transparent); border: 1px dashed var(--accent-line); }
+
+/* The cover-style hero backdrop. */
+.pb-cover {
+  border: 1px solid var(--accent-line);
+  background:
+    linear-gradient(115deg, color-mix(in srgb, var(--accent-hi) 16%, transparent), transparent 44%),
+    radial-gradient(130% 130% at 12% -25%, color-mix(in srgb, var(--accent) 20%, transparent), transparent 60%),
+    var(--surface);
+}
+
+/* An owned card seats with a foil edge + a faint diagonal sheen. */
+.pb-seated { box-shadow: 0 0 0 1.5px var(--accent), 0 3px 8px -4px rgba(0,0,0,0.45); }
+.pb-seated::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(125deg, transparent 40%, var(--sheen) 50%, transparent 60%);
+}
+
+/* --- the card reveal (unowned → owned): flip to colour + holo shine --- */
 @keyframes pb-reveal {
-  0%   { transform: perspective(700px) rotateY(-72deg) scale(0.9); filter: grayscale(1) brightness(1.5); }
-  55%  { transform: perspective(700px) rotateY(0deg) scale(1.09);  filter: grayscale(0) brightness(1.12); }
+  0%   { transform: perspective(700px) rotateY(-70deg) scale(0.9); filter: grayscale(1) brightness(1.4); }
+  55%  { transform: perspective(700px) rotateY(0deg) scale(1.08);  filter: grayscale(0) brightness(1.1); }
   100% { transform: perspective(700px) rotateY(0deg) scale(1);     filter: none; }
 }
-
 @keyframes pb-shine {
   0%   { opacity: 0;    transform: translateX(-130%) skewX(-18deg); }
-  30%  { opacity: 0.85; }
+  30%  { opacity: 0.9; }
   100% { opacity: 0;    transform: translateX(130%) skewX(-18deg); }
 }
-
-.pb-reveal {
-  animation: pb-reveal 500ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
-  will-change: transform, filter;
-}
-
-/* The shine is a pseudo-element clipped to the (overflow-hidden) card face. */
+.pb-reveal { animation: pb-reveal 500ms cubic-bezier(0.2,0.7,0.2,1) both; will-change: transform, filter; }
 .pb-shine::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: linear-gradient(75deg, transparent 34%, rgba(255, 255, 255, 0.7) 50%, transparent 66%);
-  mix-blend-mode: screen;
+  content: ""; position: absolute; inset: 0; pointer-events: none; mix-blend-mode: screen;
+  background: linear-gradient(75deg, transparent 34%, rgba(255,255,255,0.78) 50%, transparent 66%);
   animation: pb-shine 650ms ease-out both;
 }
-
 @media (prefers-reduced-motion: reduce) {
   .pb-reveal { animation: none; }
   .pb-shine::after { content: none; animation: none; }

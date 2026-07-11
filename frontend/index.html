@@ -3,13 +3,16 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="color-scheme" content="dark" />
     <meta
       name="description"
       content="PocketBinder — a self-hosted Pokémon TCG collection tracker. Browse every set, track what you own, and see your collection's market value."
     />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>PocketBinder</title>
+    <!-- Set the theme before first paint (default light) so there's no flash.
+         Inline, so it's allowed via a CSP hash in nginx.conf (not unsafe-inline);
+         if you edit this line, recompute that hash (scripts/csp-hash.sh). -->
+    <script>try{document.documentElement.setAttribute('data-theme',localStorage.getItem('pb-theme')==='dark'?'dark':'light')}catch(e){document.documentElement.setAttribute('data-theme','light')}</script>
   </head>
   <body>
     <div id="root"></div>
