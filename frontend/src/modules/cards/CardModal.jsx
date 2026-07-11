@@ -8,7 +8,7 @@ import CardImage from './CardImage.jsx'
 // A card detail overlay, opened over a grid. Fetches the full card (metadata +
 // market price + your ownership) and lets you edit your ownership — mark it
 // owned, set a quantity, or add it to your wishlist. Those edits are `manual`
-// (they survive a later Pokéllector re-import). Closes on backdrop click / Escape.
+// (they survive a later re-import). Closes on backdrop click / Escape.
 // `onMutated` lets the parent refresh its grid/stats after a change.
 export default function CardModal({ cardId, onClose, onMutated }) {
   const { data, loading } = useApi(cardId ? `/cards/card/${encodeURIComponent(cardId)}` : null, 0)
@@ -27,8 +27,8 @@ export default function CardModal({ cardId, onClose, onMutated }) {
 
   if (!cardId) return null
   const usd = data ? formatUsd(data.tcgplayer_usd) : null
-  // Editing operates on the `normal` variant (what the Pokéllector import uses);
-  // any other owned variants (e.g. an imported holofoil) show read-only below.
+  // Editing operates on the `normal` variant (the default); any other owned
+  // variants (e.g. an imported holofoil) show read-only below.
   const baseNormal = data?.ownership?.find((o) => o.variant === 'normal')
   const eff = local ?? {
     qty: baseNormal?.qty ?? 0,
@@ -187,7 +187,7 @@ export default function CardModal({ cardId, onClose, onMutated }) {
                   </ul>
                 )}
                 <p className="mt-2 text-[11px] text-slate-500">
-                  Your edits here survive a Pokéllector re-import.
+                  Your edits here survive a re-import.
                 </p>
               </div>
             </div>

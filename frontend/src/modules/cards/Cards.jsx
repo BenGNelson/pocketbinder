@@ -10,8 +10,8 @@ import WantlistModal from './WantlistModal.jsx'
 
 // The Cards hub: your Pokémon TCG collection. A back-lit stats hero (the one
 // radiance moment), a show-off wall of the cards you own, and a grid of every
-// set with a completion bar. Ownership is seeded by importing a Pokéllector
-// export and then managed in HQ. Mobile-first, like the Library hub.
+// set with a completion bar. Tap cards to mark them owned, or seed your
+// collection from a CSV/JSON import. Mobile-first.
 export default function Cards() {
   // The indexer status polls a little faster so the first-run "building the
   // catalog…" state clears promptly once the ~20k-card ingest finishes.
@@ -146,8 +146,8 @@ function ShowcaseWall({ cards, stats, onOpen }) {
       <section className="space-y-2">
         <ShelfHeading>Your collection</ShelfHeading>
         <div className="rounded-2xl border border-slate-800 bg-slate-900/40 p-6 text-sm text-slate-400">
-          Nothing here yet. Use <span className="text-slate-200">Import</span> above to bring your
-          Pokéllector collection in, then it’ll show off here.
+          Nothing here yet. Open a set and tap the cards you own — they’ll light up and show off
+          here. Got a big collection already? Use <span className="text-slate-200">Import</span> above.
         </div>
       </section>
     )
@@ -157,7 +157,7 @@ function ShowcaseWall({ cards, stats, onOpen }) {
     <section className="space-y-2">
       <div className="flex items-center justify-between">
         <ShelfHeading>Your collection</ShelfHeading>
-        <Link to={cardsSearchHref('') + '?owned=1'} className="text-xs text-slate-400 active:text-slate-200">
+        <Link to={cardsSearchHref('', { owned: true })} className="text-xs text-slate-400 active:text-slate-200">
           {total > cards.length ? `See all ${fmt(total)} ›` : 'Search yours ›'}
         </Link>
       </div>
@@ -173,8 +173,8 @@ function ShowcaseWall({ cards, stats, onOpen }) {
 }
 
 // Every set as a calm typographic tile with a completion bar (no external logos —
-// the CSP is img-src 'self', so set art would be blocked; the card faces inside a
-// set carry the visuals). Newest release first.
+// the CSP blocks external image hosts, so set art wouldn't load; the card faces
+// inside a set carry the visuals). Newest release first.
 function SetsGrid({ sets, loading, error }) {
   return (
     <section className="space-y-2">
@@ -228,7 +228,7 @@ function SetCard({ s }) {
   )
 }
 
-// Upload a Pokéllector export (CSV/JSON). Seeds/refreshes the collection.
+// Upload a CSV/JSON collection file. Seeds/refreshes owned cards.
 function ImportButton({ onResult }) {
   const [busy, setBusy] = useState(false)
   const onFile = async (e) => {

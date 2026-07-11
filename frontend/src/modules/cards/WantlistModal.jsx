@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useApi } from '../../lib/useApi.js'
 import { MASSENTRY_URL } from '../../lib/cards.js'
 
@@ -11,6 +11,12 @@ export default function WantlistModal({ url, title, onClose }) {
   const { data, error, loading } = useApi(url, 0)
   const [copied, setCopied] = useState(false)
   const text = (data?.lines ?? []).join('\n')
+
+  useEffect(() => {
+    const onKey = (e) => e.key === 'Escape' && onClose()
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [onClose])
 
   const copy = async () => {
     try {

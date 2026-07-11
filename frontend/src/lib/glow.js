@@ -1,9 +1,7 @@
-// The reusable engine behind the "back-lit radiance" motif (see
-// docs/ARCHITECTURE.md → "Visual motif: back-lit radiance"). Produces a CSS
+// The reusable engine behind the "back-lit radiance" look. Produces a CSS
 // `drop-shadow` glow so an icon/element reads as a light source. `rgb` is an
-// "r,g,b" string (a constant-palette color so it survives theme swaps);
-// `intensity` (0..1) scales the blur + alpha. The knobs let each surface tune
-// its look without re-spelling the rgba string.
+// "r,g,b" string; `intensity` (0..1) scales the blur + alpha. The knobs let each
+// surface tune its look without re-spelling the rgba string.
 export function glowFilter(
   rgb,
   intensity = 1,

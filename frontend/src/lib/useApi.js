@@ -1,20 +1,20 @@
 import { useEffect, useState } from 'react'
 
 // Base path for API calls. Same-origin "/api" in both dev (Vite proxies it)
-// and prod (Nginx proxies it), so widgets never hardcode a host.
+// and prod (Nginx proxies it), so the app never hardcodes a host.
 export const API_BASE = import.meta.env.VITE_API_BASE ?? '/api'
 
 // Fetches `${API_BASE}${path}` on mount and re-polls every `intervalMs`.
 // Returns { data, error, loading }.
 //
 // Two behaviors that matter for the UI:
-//  - On a PATH CHANGE (e.g. selecting a different container) it resets to a
+//  - On a PATH CHANGE (e.g. opening a different card or set) it resets to a
 //    loading state and clears the old data, so the consumer can show a spinner
 //    instead of the previous item's stale details.
 //  - During steady polling of the SAME path it keeps the last good data and
 //    only swaps it in on success, so the view doesn't flicker; a failed poll
 //    keeps the last good data and surfaces an error.
-//  - Polling only runs while the tab is VISIBLE — a backgrounded PWA stops
+//  - Polling only runs while the tab is VISIBLE — a backgrounded tab stops
 //    hitting the backend, and regaining visibility kicks an immediate refresh
 //    (so the view isn't stale) before resuming the interval.
 export function useApi(path, intervalMs = 5000) {

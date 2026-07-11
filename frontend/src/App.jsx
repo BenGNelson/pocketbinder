@@ -4,9 +4,9 @@ import SetView from './modules/cards/SetView.jsx'
 import Search from './modules/cards/Search.jsx'
 
 // PocketBinder — a self-hosted Pokémon TCG collection tracker. The Cards module
-// (lifted from the Home HQ prototype) is the whole app; this shell just frames it
-// with a brand header + a disclaimer footer. The module's internal links use the
-// /cards prefix, so the routes keep it (and / redirects there).
+// is the whole app; this shell just frames it with a brand header + a disclaimer
+// footer. The module's internal links use the /cards prefix, so the routes keep
+// it (and / redirects there).
 export default function App() {
   return (
     <div className="flex min-h-screen flex-col bg-slate-950 text-slate-100">
