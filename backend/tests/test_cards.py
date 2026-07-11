@@ -2,12 +2,20 @@
 prune, the ownership query/import logic (esp. re-import preserving in-app edits),
 and the HTTP endpoints."""
 
+import io
 import json
 
 import pytest
+from PIL import Image
 
-from app import card_sync, cards as cards_mod, db
+from app import card_sync, cards as cards_mod, db, images
 from app.config import settings
+
+
+def _png_bytes(w=800, h=1100, color=(200, 30, 30)):
+    buf = io.BytesIO()
+    Image.new("RGB", (w, h), color).save(buf, format="PNG")
+    return buf.getvalue()
 
 # --- pure parsing (app/cards.py) -------------------------------------------
 
@@ -330,3 +338,140 @@ def test_image_404_without_source(client, catalog, tmp_path, monkeypatch):
     monkeypatch.setattr(settings, "cards_dir", "")
     # No image url on this (unknown) card → 404, no network.
     assert client.get("/api/cards/image?id=nope-1&size=small").status_code == 404
+
+
+# --- image thumbnailing (app/images.py) ------------------------------------
+
+
+def test_to_thumbnail_downscales_to_webp():
+    raw = _png_bytes(800, 1100)
+    out = images.to_thumbnail(raw, max_width=400)
+    assert out is not None
+    im = Image.open(io.BytesIO(out))
+    assert im.format == "WEBP"
+    assert (im.width, im.height) == (400, 550)  # aspect preserved, not upscaled
+    assert len(out) < len(raw)
+
+
+def test_to_thumbnail_rejects_non_image():
+    assert images.to_thumbnail(b"not an image") is None
+
+
+def test_write_atomic_overwrites_and_leaves_no_temp(tmp_path):
+    p = tmp_path / "x.webp"
+    images.write_atomic(str(p), b"hello")
+    assert p.read_bytes() == b"hello"
+    images.write_atomic(str(p), b"world")  # atomic replace
+    assert p.read_bytes() == b"world"
+    assert not any(f.suffix == ".tmp" for f in tmp_path.iterdir())  # no .tmp left behind
+
+
+# --- image endpoint (proxy + cache) ----------------------------------------
+
+
+def test_image_endpoint_serves_and_caches(client, catalog, tmp_path, monkeypatch):
+    art, src = tmp_path / "art", tmp_path / "src"
+    src.mkdir()
+    (src / "s").write_bytes(_png_bytes(600, 800))  # base1-2's image_small url is "s"
+    monkeypatch.setattr(settings, "card_art_dir", str(art))
+    monkeypatch.setattr(settings, "cards_dir", str(src))
+
+    r = client.get("/api/cards/image?id=base1-2&size=small")
+    assert r.status_code == 200
+    assert r.headers["content-type"] == "image/webp"
+    cached = list(art.glob("*.webp"))
+    assert len(cached) == 1  # written to the WebP cache
+
+    # Second request is served from that cache (still 200, same one file).
+    assert client.get("/api/cards/image?id=base1-2&size=small").status_code == 200
+    assert len(list(art.glob("*.webp"))) == 1
+
+
+def test_image_rejects_unknown_size(client, catalog):
+    # size is constrained to small|large so novel values can't explode the cache.
+    assert client.get("/api/cards/image?id=base1-2&size=huge").status_code == 422
+
+
+# --- price refresh (app/card_sync.py) --------------------------------------
+
+
+class _FakeResp:
+    def __init__(self, data):
+        self.status_code = 200
+        self._data = data
+
+    def json(self):
+        return {"data": self._data}
+
+
+def test_refresh_prices_updates_owned(catalog, monkeypatch, tmp_path):
+    monkeypatch.setattr(settings, "card_data_dir", str(tmp_path))  # _configured()
+    monkeypatch.setattr(settings, "pokemontcg_api_key", "k")
+    db.upsert_ownership("base1-4", qty=1, source="manual")
+    monkeypatch.setattr(
+        card_sync.requests, "get",
+        lambda *a, **k: _FakeResp([
+            {"id": "base1-4", "tcgplayer": {"prices": {"holofoil": {"market": 99.5}}}}
+        ]),
+    )
+    idx = card_sync.CardIndexer(enabled=True, interval=3600)
+    assert idx.refresh_prices(now=1000.0) == 1
+    card = db.get_card("base1-4")
+    assert card["tcgplayer_usd"] == 99.5
+    assert card["price_updated"] == 1000.0
+
+
+def test_refresh_prices_stamps_unpriced_so_it_stops_requerying(catalog, monkeypatch, tmp_path):
+    monkeypatch.setattr(settings, "card_data_dir", str(tmp_path))
+    monkeypatch.setattr(settings, "pokemontcg_api_key", "k")
+    db.upsert_ownership("base1-4", qty=1, source="manual")
+    monkeypatch.setattr(card_sync.requests, "get", lambda *a, **k: _FakeResp([]))
+    idx = card_sync.CardIndexer(enabled=True, interval=3600)
+    idx.refresh_prices(now=1000.0)
+    card = db.get_card("base1-4")
+    assert card["tcgplayer_usd"] is None
+    assert card["price_updated"] == 1000.0  # stamped, not left forever-null
+
+
+# --- incremental indexing (mtime skip + version force) ---------------------
+
+
+def test_index_skips_unchanged_then_forces_on_version_bump(tmp_path, monkeypatch):
+    _write_data_dir(tmp_path, _SETS, _CARDS)
+    monkeypatch.setattr(settings, "card_data_dir", str(tmp_path))
+    idx = card_sync.CardIndexer(enabled=True, interval=3600)
+    assert idx.index_once() == 5   # first pass upserts everything
+    assert idx.index_once() == 0   # unchanged files skipped by mtime → nothing upserted
+    db.set_meta("card_index_version", "stale")
+    assert idx.index_once() == 5   # a parser-version bump forces a full re-upsert
+
+
+# --- set-code alias + import via the human set code ------------------------
+
+
+def test_set_code_aliases(catalog):
+    alias = db.set_code_aliases()
+    assert alias["BS"] == "base1" and alias["BASE1"] == "base1"
+    assert alias["SSH"] == "swsh1"
+
+
+def test_parse_ownership_resolves_set_code(catalog):
+    alias = db.set_code_aliases()
+    rows = cards_mod.parse_ownership("setid,number\nBS,4\nbase1,58\n", "o.csv", set_alias=alias)
+    assert {r["card_id"] for r in rows} == {"base1-4", "base1-58"}
+
+
+def test_parse_ownership_json_wrapper_and_malformed():
+    rows = cards_mod.parse_ownership('{"cards":[{"setid":"base1","number":"4"}]}', "o.json")
+    assert rows[0]["card_id"] == "base1-4"
+    assert cards_mod.parse_ownership("not json at all", "o.json") == []  # bad json → []
+    assert cards_mod.parse_ownership("", "o.csv") == []  # empty → []
+
+
+def test_import_endpoint_accepts_set_code(client, catalog):
+    res = client.post(
+        "/api/cards/ownership/import",
+        files={"file": ("o.csv", "setid,number\nBS,4\n", "text/csv")},
+    )
+    assert res.status_code == 200 and res.json()["imported"] == 1
+    assert client.get("/api/cards/card/base1-4").json()["ownership"][0]["qty"] == 1

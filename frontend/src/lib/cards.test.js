@@ -14,6 +14,9 @@ describe('cards helpers', () => {
     expect(cardsSearchHref('')).toBe('/cards/search')
     expect(cardsSearchHref('pikachu')).toBe('/cards/search?q=pikachu')
     expect(cardsSearchHref('a b')).toBe('/cards/search?q=a%20b')
+    // owned scope, with and without a query
+    expect(cardsSearchHref('', { owned: true })).toBe('/cards/search?owned=1')
+    expect(cardsSearchHref('pikachu', { owned: true })).toBe('/cards/search?q=pikachu&owned=1')
   })
 
   it('computes completion percentage, guarding a zero denominator', () => {
