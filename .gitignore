@@ -12,3 +12,7 @@ __pycache__/
 # Local data (a real pokemon-tcg-data clone, SQLite, caches)
 data/pokemon-tcg-data/
 *.db
+
+# Private working notes — never published (this is a public repo)
+/CLAUDE.md
+/TODO.md
