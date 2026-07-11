@@ -245,6 +245,56 @@ def test_search_owned_filter(catalog):
     assert {c["id"] for c in db.search_cards("blastoise", owned=False)} == {"base1-2"}
 
 
+def test_search_sort_by_value(catalog):
+    """`sort='value'` orders owned cards by market price, high→low, with unpriced
+    cards sinking to the bottom; the price rides along for display."""
+    for cid in ("base1-2", "base1-4", "base1-58", "swsh1-1"):
+        db.upsert_ownership(cid, qty=1)
+    db.update_card_prices("base1-4", 300.0, None)  # Charizard, priciest
+    db.update_card_prices("base1-2", 90.0, None)  # Blastoise
+    db.update_card_prices("base1-58", 5.0, None)  # Pikachu
+    # swsh1-1 stays unpriced (tcgplayer_usd is None).
+    rows = db.search_cards("", owned=True, sort="value")
+    assert [c["id"] for c in rows] == ["base1-4", "base1-2", "base1-58", "swsh1-1"]
+    assert rows[0]["tcgplayer_usd"] == 300.0
+
+
+def test_search_sort_by_recent(catalog):
+    """`sort='recent'` orders by most-recent ownership edit first."""
+    db.upsert_ownership("base1-2", qty=1, now_ms=1000)
+    db.upsert_ownership("base1-4", qty=1, now_ms=3000)
+    db.upsert_ownership("base1-58", qty=1, now_ms=2000)
+    ids = [c["id"] for c in db.search_cards("", owned=True, sort="recent")]
+    assert ids == ["base1-4", "base1-58", "base1-2"]
+
+
+def test_search_sort_by_set_newest_first(catalog):
+    """`sort='set'` orders by set release date, newest first."""
+    for cid in ("base1-4", "swsh1-1"):
+        db.upsert_ownership(cid, qty=1)
+    ids = [c["id"] for c in db.search_cards("", owned=True, sort="set")]
+    assert ids == ["swsh1-1", "base1-4"]  # swsh1 (2020) before base1 (1999)
+
+
+def test_search_unknown_sort_falls_back_to_name(catalog):
+    """An unrecognized sort value degrades to the default name ordering."""
+    for cid in ("base1-2", "base1-4", "base1-58"):
+        db.upsert_ownership(cid, qty=1)
+    bogus = db.search_cards("", owned=True, sort="bogus")
+    assert [c["id"] for c in bogus] == [c["id"] for c in db.search_cards("", owned=True, sort="name")]
+
+
+def test_ownership_printing_roundtrip(catalog):
+    """A card's printing (1st Ed / Shadowless / Unlimited) round-trips; unset is
+    NULL, which the UI reads as the default Unlimited."""
+    db.upsert_ownership("base1-4", qty=1, printing="1st_edition")
+    row = next(o for o in db.get_card("base1-4")["ownership"] if o["variant"] == "normal")
+    assert row["printing"] == "1st_edition"
+    db.upsert_ownership("base1-2", qty=1)  # printing unset
+    row2 = next(o for o in db.get_card("base1-2")["ownership"] if o["variant"] == "normal")
+    assert row2["printing"] is None
+
+
 def test_reimport_preserves_manual_edits(catalog):
     # An in-app edit (source='manual') on one card+variant.
     db.upsert_ownership("base1-4", variant="holofoil", qty=2, source="manual")

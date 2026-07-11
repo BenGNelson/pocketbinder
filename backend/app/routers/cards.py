@@ -104,6 +104,7 @@ class CardBriefModel(BaseModel):
     owned: bool = False
     owned_qty: int = 0
     wishlist: bool = False
+    tcgplayer_usd: float | None = None
 
 
 class SetDetailModel(BaseModel):
@@ -123,6 +124,7 @@ class OwnershipRowModel(BaseModel):
     condition: str | None = None
     wishlist: bool = False
     notes: str | None = None
+    printing: str | None = Field(default=None, description="Which printing you own: unlimited (default) | 1st_edition | shadowless")
     source: str = Field(description="'imported' (bulk import) or 'manual' (in-app edit)")
 
 
@@ -159,6 +161,7 @@ class OwnershipUpdate(BaseModel):
     condition: str | None = None
     wishlist: bool = False
     notes: str | None = None
+    printing: str | None = None
 
 
 class OkModel(BaseModel):
@@ -216,6 +219,7 @@ def _brief(row):
         "owned": bool(row.get("owned")),
         "owned_qty": row.get("owned_qty", 0) or 0,
         "wishlist": bool(row.get("wishlist")),
+        "tcgplayer_usd": row.get("tcgplayer_usd"),
     }
 
 
@@ -270,12 +274,13 @@ def cards_collection_wantlist():
 
 @router.get("/cards/search", response_model=SearchModel, response_model_exclude_none=True)
 def cards_search(
-    q: str = Query("", description="Card-name substring; empty = first results alphabetically"),
+    q: str = Query("", description="Card-name substring; empty = first results in sort order"),
     owned: bool = Query(False, description="Restrict to cards you own"),
     limit: int = Query(120, ge=1, le=500),
+    sort: str = Query("name", description="Order: name | value | recent | set (unknown → name)"),
 ):
     """Search across the whole catalog by card name, with an owned overlay."""
-    rows = db.search_cards(q, owned=owned, limit=limit)
+    rows = db.search_cards(q, owned=owned, limit=limit, sort=sort)
     return {"items": [_brief(r) for r in rows], "total": db.count_cards(), "query": q}
 
 
@@ -309,6 +314,7 @@ def cards_card_detail(card_id: str):
                 "condition": o["condition"],
                 "wishlist": bool(o["wishlist"]),
                 "notes": o["notes"],
+                "printing": o["printing"],
                 "source": o["source"],
             }
             for o in card["ownership"]
@@ -413,6 +419,7 @@ def cards_ownership_put(body: OwnershipUpdate):
         condition=body.condition,
         wishlist=1 if body.wishlist else 0,
         notes=body.notes,
+        printing=body.printing,
         source="manual",
     )
     return {"ok": True}

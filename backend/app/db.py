@@ -71,6 +71,7 @@ CREATE TABLE IF NOT EXISTS card_ownership (
     condition  TEXT,
     wishlist   INTEGER NOT NULL DEFAULT 0,       -- 1 = want (qty may be 0)
     notes      TEXT,
+    printing   TEXT,                             -- which printing you own: unlimited (default)|1st_edition|shadowless
     source     TEXT NOT NULL DEFAULT 'imported',  -- 'imported' | 'manual'
     updated_ms INTEGER NOT NULL,
     PRIMARY KEY (card_id, variant)
@@ -101,6 +102,15 @@ def init_db():
         # It's a persistent DB-file setting, so once is enough.
         conn.execute("PRAGMA journal_mode=WAL")
         conn.executescript(_SCHEMA)
+        # Migrations for DBs created before a column existed (CREATE TABLE
+        # IF NOT EXISTS won't add columns to an existing table).
+        _add_column_if_missing(conn, "card_ownership", "printing", "TEXT")
+
+
+def _add_column_if_missing(conn, table, column, decl):
+    have = {r["name"] for r in conn.execute(f"PRAGMA table_info({table})")}
+    if column not in have:
+        conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {decl}")
 
 
 def get_meta(key, default=None):
@@ -284,33 +294,44 @@ def list_set_cards(setid):
         return [dict(r) for r in rows]
 
 
-def search_cards(q, owned=False, limit=100):
+# Collection/search sort → the ORDER BY clause. Whitelisted so the query param
+# never reaches SQL as raw text; every option keeps a stable name/number tiebreak,
+# and pushes rows with no value/date to the end.
+_SEARCH_SORTS = {
+    "name": "c.name COLLATE NOCASE, c.setid, c.sort_order",
+    "value": "c.tcgplayer_usd IS NULL, c.tcgplayer_usd DESC, c.name COLLATE NOCASE",
+    "recent": "updated_ms IS NULL, updated_ms DESC, c.name COLLATE NOCASE",
+    "set": "s.release_date IS NULL, s.release_date DESC, c.sort_order, c.number",
+}
+
+
+def search_cards(q, owned=False, limit=100, sort="name"):
     """Cards whose name matches `q` (case-insensitive substring), each with an
-    owned flag. An empty query returns the first `limit` alphabetically (a
-    browseable default). `owned=True` restricts to cards you own (qty>0)."""
+    ownership overlay + market price. An empty query returns the first `limit` in
+    the chosen order (a browseable default). `owned=True` restricts to cards you
+    own (qty>0). `sort` is one of _SEARCH_SORTS (unknown falls back to 'name')."""
     q = (q or "").strip()
+    order_by = _SEARCH_SORTS.get(sort, _SEARCH_SORTS["name"])
     having = "HAVING owned = 1" if owned else ""
+    join_sets = "JOIN card_sets s ON s.setid = c.setid " if sort == "set" else ""
+    params, where = [], ""
+    if q:
+        where = "WHERE c.name LIKE ? ESCAPE '\\' "
+        params.append(f"%{_like_escape(q)}%")
+    params.append(limit)
     with get_conn() as conn:
-        if q:
-            like = f"%{_like_escape(q)}%"
-            rows = conn.execute(
-                f"SELECT {_CARD_LIST_COLS}, "
-                "  MAX(CASE WHEN o.qty > 0 THEN 1 ELSE 0 END) AS owned "
-                "FROM cards c LEFT JOIN card_ownership o ON o.card_id = c.id "
-                "WHERE c.name LIKE ? ESCAPE '\\' "
-                f"GROUP BY c.id {having} "
-                "ORDER BY c.name COLLATE NOCASE, c.setid, c.sort_order LIMIT ?",
-                (like, limit),
-            ).fetchall()
-        else:
-            rows = conn.execute(
-                f"SELECT {_CARD_LIST_COLS}, "
-                "  MAX(CASE WHEN o.qty > 0 THEN 1 ELSE 0 END) AS owned "
-                "FROM cards c LEFT JOIN card_ownership o ON o.card_id = c.id "
-                f"GROUP BY c.id {having} "
-                "ORDER BY c.name COLLATE NOCASE, c.setid, c.sort_order LIMIT ?",
-                (limit,),
-            ).fetchall()
+        rows = conn.execute(
+            f"SELECT {_CARD_LIST_COLS}, c.tcgplayer_usd, "
+            "  MAX(CASE WHEN o.qty > 0 THEN 1 ELSE 0 END) AS owned, "
+            "  COALESCE(SUM(CASE WHEN o.qty > 0 THEN o.qty ELSE 0 END), 0) AS owned_qty, "
+            "  MAX(COALESCE(o.wishlist, 0)) AS wishlist, "
+            "  MAX(o.updated_ms) AS updated_ms "
+            "FROM cards c LEFT JOIN card_ownership o ON o.card_id = c.id "
+            f"{join_sets}{where}"
+            f"GROUP BY c.id {having} "
+            f"ORDER BY {order_by} LIMIT ?",
+            params,
+        ).fetchall()
         return [dict(r) for r in rows]
 
 
@@ -327,7 +348,7 @@ def get_card(card_id):
             return None
         card = dict(row)
         owns = conn.execute(
-            "SELECT variant, qty, condition, wishlist, notes, source, updated_ms "
+            "SELECT variant, qty, condition, wishlist, notes, printing, source, updated_ms "
             "FROM card_ownership WHERE card_id = ? ORDER BY variant",
             (card_id,),
         ).fetchall()
@@ -454,21 +475,22 @@ def replace_ownership(source, rows, now_ms=None):
 
 
 def upsert_ownership(card_id, variant="normal", qty=1, condition=None,
-                     wishlist=0, notes=None, source="manual", now_ms=None):
+                     wishlist=0, notes=None, printing=None, source="manual", now_ms=None):
     """Upsert one ownership row (the living-tracker edit path). Defaults to
     source='manual' so it survives a later re-import."""
     now_ms = now_ms if now_ms is not None else int(time.time() * 1000)
     with get_conn() as conn:
         conn.execute(
             "INSERT INTO card_ownership "
-            "(card_id, variant, qty, condition, wishlist, notes, source, updated_ms) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?) "
+            "(card_id, variant, qty, condition, wishlist, notes, printing, source, updated_ms) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) "
             "ON CONFLICT(card_id, variant) DO UPDATE SET "
             "qty = excluded.qty, condition = excluded.condition, "
             "wishlist = excluded.wishlist, notes = excluded.notes, "
+            "printing = excluded.printing, "
             "source = excluded.source, updated_ms = excluded.updated_ms",
             (card_id, variant, int(qty or 0), condition, int(wishlist or 0),
-             notes, source, now_ms),
+             notes, printing, source, now_ms),
         )
 
 
