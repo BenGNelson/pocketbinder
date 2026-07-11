@@ -1,0 +1,14 @@
+# Secrets / local config
+.env
+
+# Node
+node_modules/
+frontend/dist/
+
+# Python
+__pycache__/
+*.pyc
+
+# Local data (a real pokemon-tcg-data clone, SQLite, caches)
+data/pokemon-tcg-data/
+*.db

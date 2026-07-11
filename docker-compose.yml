@@ -1,0 +1,61 @@
+# PocketBinder — service definitions. No secrets: every host-specific value is a
+# ${VAR} pulled from .env at runtime. Ports are offset so it runs happily
+# alongside other apps on the same host.
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  backend:
+    build: ./backend
+    container_name: pocketbinder-backend
+    env_file: .env
+    ports:
+      - "${API_PORT:-8010}:8000"
+    volumes:
+      # The Pokémon TCG catalog (a pokemon-tcg-data clone), read-only. Defaults to
+      # the committed tiny example (a couple of sets so the app renders on a fresh
+      # clone / in CI); set CARD_DATA_SRC in .env to your full `git clone`.
+      - "${CARD_DATA_SRC:-./data/pokemon-tcg-data.example}:/card-data:ro"
+      # SQLite (catalog + your collection) + the WebP card-art cache.
+      - "pocketbinder-data:/data"
+      # OPTIONAL: a local full-res card-image dump (archival) so faces serve fully
+      # offline. Off by default. To enable, uncomment + set CARDS_DIR=/card-images.
+      # - "${CARD_IMAGES_SRC:-/dev/null}:/card-images:ro"
+    restart: unless-stopped
+    logging: *default-logging
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: pocketbinder-frontend
+    ports:
+      - "${FRONTEND_PORT:-8088}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    logging: *default-logging
+
+  # Hot-reload dev server (opt-in): docker compose --profile dev up frontend-dev
+  frontend-dev:
+    profiles: ["dev"]
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: pocketbinder-frontend-dev
+    ports:
+      - "5175:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    restart: unless-stopped
+    logging: *default-logging
+
+volumes:
+  pocketbinder-data:

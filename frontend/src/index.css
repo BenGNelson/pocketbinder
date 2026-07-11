@@ -1,0 +1,8 @@
+@import "tailwindcss";
+
+/* Paint the root the darkest neutral so no white shows through (iOS status bar,
+   overscroll bounce). PocketBinder is dark-only. */
+html {
+  background-color: var(--color-slate-950);
+  color-scheme: dark;
+}
