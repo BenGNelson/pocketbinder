@@ -31,7 +31,7 @@ _AI-assisted build._
   from another tool? Import a CSV/JSON once (see [Filling your collection](#filling-your-collection)).
   A re-import refreshes the imported cards but preserves your in-app edits.
 
-Mobile-first, dark UI.
+Mobile-first, with light and dark themes (a header toggle; light by default).
 
 ## Quick start
 
@@ -96,9 +96,11 @@ imported rows but keeps anything you've edited in the app.
   `images.pokemontcg.io` and cached as downscaled WebP on first view (the backend
   never redistributes images).
 - **Frontend** — React + Vite + Tailwind, built to static and served by nginx,
-  which reverse-proxies `/api` so the whole app is one origin. Ownership edits are
-  optimistic (instant, with a rollback if the write fails). Card faces load
-  same-origin through the proxy; the CSP blocks external image hosts.
+  which reverse-proxies `/api` so the whole app is one origin. Cards seat into
+  binder pockets; owning one plays a foil "reveal". Theming is token-driven (light
+  default + a dark toggle). Ownership edits are optimistic (instant, with a
+  rollback if the write fails). Card faces load same-origin through the proxy; a
+  strict CSP blocks external hosts (the one inline theme script is allowed by hash).
 - **Data model** — completion, owned counts, and value are pure SQL joins over a
   single `card_ownership` table. Rows carry a `source` (`imported` vs `manual`
   edit) so a re-import never clobbers your in-app changes.
