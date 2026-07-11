@@ -4,6 +4,14 @@ import { formatUsd } from '../../lib/cards.js'
 import { formatAgo } from '../../lib/format.js'
 import CardImage from './CardImage.jsx'
 
+// Which printing of a card you own. Defaults to Unlimited (by far the most common
+// for most collectors); the vintage runs are the pricier First Edition / Shadowless.
+const PRINTINGS = [
+  { id: 'unlimited', label: 'Unlimited' },
+  { id: '1st_edition', label: '1st Edition' },
+  { id: 'shadowless', label: 'Shadowless' },
+]
+
 // A card detail overlay, opened over a grid. Fetches the full card (metadata +
 // market price + your ownership) and lets you edit your ownership — mark it
 // owned, set a quantity, or add it to your wishlist. Those edits are `manual`
@@ -27,10 +35,12 @@ export default function CardModal({ cardId, onClose, onMutated }) {
   const eff = local ?? {
     qty: baseNormal?.qty ?? 0,
     wishlist: !!(baseNormal && baseNormal.qty === 0 && baseNormal.wishlist),
+    printing: baseNormal?.printing ?? 'unlimited',
   }
   const isOwned = eff.qty > 0
   const isWishlist = eff.qty === 0 && eff.wishlist
   const qty = eff.qty
+  const printing = eff.printing ?? 'unlimited'
   const others = data?.ownership?.filter((o) => o.variant !== 'normal' && o.qty > 0) ?? []
 
   const apply = async (next, method, body) => {
@@ -60,12 +70,20 @@ export default function CardModal({ cardId, onClose, onMutated }) {
   }
 
   const markOwned = () =>
-    apply({ qty: 1, wishlist: false }, 'PUT', { card_id: cardId, variant: 'normal', qty: 1, wishlist: false })
+    apply({ qty: 1, wishlist: false, printing }, 'PUT', { card_id: cardId, variant: 'normal', qty: 1, wishlist: false, printing })
   const unown = () => apply({ qty: 0, wishlist: false }, 'DELETE', { card_id: cardId, variant: 'normal' })
   const setQty = (n) =>
     n <= 0
       ? unown()
-      : apply({ qty: n, wishlist: false }, 'PUT', { card_id: cardId, variant: 'normal', qty: n, wishlist: false })
+      : apply({ qty: n, wishlist: false, printing }, 'PUT', { card_id: cardId, variant: 'normal', qty: n, wishlist: false, printing })
+  const setPrinting = (p) =>
+    apply({ qty: Math.max(1, qty), wishlist: false, printing: p }, 'PUT', {
+      card_id: cardId,
+      variant: 'normal',
+      qty: Math.max(1, qty),
+      wishlist: false,
+      printing: p,
+    })
   const toggleWishlist = () =>
     isWishlist
       ? unown()
@@ -79,7 +97,7 @@ export default function CardModal({ cardId, onClose, onMutated }) {
       aria-modal="true"
     >
       <div
-        className="pb-card relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl p-5 shadow-[var(--shadow)]"
+        className="pb-card relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl p-5 shadow-[var(--shadow)] sm:max-w-3xl"
         onClick={(e) => e.stopPropagation()}
       >
         <button
@@ -93,8 +111,8 @@ export default function CardModal({ cardId, onClose, onMutated }) {
         {loading && !data ? (
           <div className="flex h-64 items-center justify-center text-sm text-[var(--dim)]">loading…</div>
         ) : data ? (
-          <div className="flex flex-col gap-4 sm:flex-row">
-            <div className="mx-auto w-40 shrink-0 sm:mx-0">
+          <div className="flex flex-col gap-4 sm:flex-row sm:gap-6">
+            <div className="mx-auto w-48 shrink-0 sm:mx-0 sm:w-[46%] sm:max-w-[380px] sm:self-start">
               <CardImage card={data} size="large" owned={isOwned} className="w-full" />
             </div>
             <div className="min-w-0 flex-1 space-y-2">
@@ -104,7 +122,7 @@ export default function CardModal({ cardId, onClose, onMutated }) {
                   {data.set_name} · #{data.number}
                 </p>
               </div>
-              <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-sm">
+              <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-1 text-sm">
                 {data.rarity && <Field label="Rarity" value={data.rarity} />}
                 {data.supertype && <Field label="Type" value={data.supertype} />}
                 {data.types?.length > 0 && <Field label="Energy" value={data.types.join(', ')} />}
@@ -115,7 +133,7 @@ export default function CardModal({ cardId, onClose, onMutated }) {
               {usd && (
                 <div className="pb-pocket rounded-xl p-3">
                   <div className="text-xs uppercase tracking-wide text-[var(--dim)]">Market value</div>
-                  <div className="pb-display text-xl font-semibold text-[var(--ink)]">{usd}</div>
+                  <div className="pb-val pb-display text-2xl font-bold">{usd}</div>
                   {data.price_updated && (
                     <div className="text-[11px] text-[var(--dim)]">as of {formatAgo(data.price_updated)}</div>
                   )}
@@ -164,6 +182,26 @@ export default function CardModal({ cardId, onClose, onMutated }) {
                     </>
                   )}
                 </div>
+                {isOwned && (
+                  <div className="mt-3">
+                    <div className="text-[11px] uppercase tracking-wide text-[var(--dim)]">Printing</div>
+                    <div className="mt-1 flex flex-wrap gap-1.5">
+                      {PRINTINGS.map((p) => (
+                        <button
+                          key={p.id}
+                          onClick={() => setPrinting(p.id)}
+                          disabled={busy}
+                          aria-pressed={printing === p.id}
+                          className={`rounded-lg px-2.5 py-1 text-xs font-medium active:scale-95 disabled:opacity-50 ${
+                            printing === p.id ? 'pb-tint' : 'pb-btn-ghost'
+                          }`}
+                        >
+                          {p.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 {others.length > 0 && (
                   <ul className="mt-2 text-xs text-[var(--dim)]">
                     {others.map((o) => (

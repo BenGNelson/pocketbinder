@@ -8,7 +8,7 @@ export function cardImageUrl(id, size = 'small') {
 }
 
 export function setHref(setid) {
-  return `/cards/sets/${encodeURIComponent(setid)}`
+  return `/sets/${encodeURIComponent(setid)}`
 }
 
 // TCGplayer's bulk-entry tool: paste a want-list, then optimize the cart to the
@@ -16,13 +16,15 @@ export function setHref(setid) {
 // pre-fill URL exists, so it's copy-list → paste).
 export const MASSENTRY_URL = 'https://www.tcgplayer.com/massentry'
 
-// Build the /cards/search href, optionally scoped to owned-only. `q` and the
-// owned flag both live in the URL so a search is refresh/share-safe.
-export function cardsSearchHref(q = '', { owned = false } = {}) {
+// Build the /search href, optionally scoped to owned-only and/or ordered.
+// `q`, the owned flag, and the sort all live in the URL so a search is
+// refresh/share-safe. `sort` is omitted when it's the backend default ('name').
+export function cardsSearchHref(q = '', { owned = false, sort = 'name' } = {}) {
   const parts = []
   if (q) parts.push(`q=${encodeURIComponent(q)}`)
   if (owned) parts.push('owned=1')
-  return parts.length ? `/cards/search?${parts.join('&')}` : '/cards/search'
+  if (sort && sort !== 'name') parts.push(`sort=${encodeURIComponent(sort)}`)
+  return parts.length ? `/search?${parts.join('&')}` : '/search'
 }
 
 // Whole-number completion percentage, guarding a zero denominator.

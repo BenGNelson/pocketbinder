@@ -41,8 +41,8 @@ export default function SetView() {
   return (
     <div className="space-y-4">
       <nav className="flex flex-wrap items-center gap-1 text-sm text-[var(--dim)]">
-        <Link to="/cards" className="hover:text-[var(--ink)]">
-          Cards
+        <Link to="/" className="hover:text-[var(--ink)]">
+          Binder
         </Link>
         <span className="px-1 opacity-60">/</span>
         <span className="text-[var(--ink)]">{meta?.name || setid}</span>

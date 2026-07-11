@@ -3,6 +3,8 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useApi, API_BASE } from '../../lib/useApi.js'
 import { SkeletonLine } from '../../components/ui.jsx'
 import { setHref, cardsSearchHref, completionPct, formatUsd } from '../../lib/cards.js'
+import { useCollectionSort } from '../../lib/settings.js'
+import CollectionSortMenu from '../../components/CollectionSortMenu.jsx'
 import CardImage from './CardImage.jsx'
 import CardModal from './CardModal.jsx'
 import WantlistModal from './WantlistModal.jsx'
@@ -15,10 +17,11 @@ export default function Cards() {
   // the hub reflects it immediately (the `_r` param is ignored by the backend).
   const [reloadKey, setReloadKey] = useState(0)
   const refresh = () => setReloadKey((k) => k + 1)
+  const sort = useCollectionSort()
   const { data: sync } = useApi('/cards/sync-status', 10000)
   const { data: stats } = useApi(`/cards/stats?_r=${reloadKey}`, 60000)
   const { data: setsData, loading, error } = useApi(`/cards/sets?_r=${reloadKey}`, 60000)
-  const { data: showcase } = useApi(`/cards/search?owned=1&limit=24&_r=${reloadKey}`, 60000)
+  const { data: showcase } = useApi(`/cards/search?owned=1&limit=24&sort=${sort}&_r=${reloadKey}`, 60000)
   const [modalId, setModalId] = useState(null)
   const [importResult, setImportResult] = useState(null)
   const [showWantlist, setShowWantlist] = useState(false)
@@ -54,8 +57,6 @@ export default function Cards() {
 
       {importResult && <ImportBanner result={importResult} onDismiss={() => setImportResult(null)} />}
 
-      <ImportHelp />
-
       {catalogEmpty ? (
         <BuildingCatalog sync={sync} />
       ) : (
@@ -77,8 +78,9 @@ export default function Cards() {
             />
           </form>
 
-          <ShowcaseWall cards={owned} stats={stats} onOpen={setModalId} />
+          <ShowcaseWall cards={owned} stats={stats} sort={sort} onOpen={setModalId} />
           <SetsGrid sets={sets} loading={loading && !setsData} error={error} />
+          <ImportHelp />
         </>
       )}
 
@@ -94,32 +96,28 @@ export default function Cards() {
   )
 }
 
-// The cover: your collection value (or card count) as one big foil number.
+// The cover, as one compact strip: your value (or card count) as a foil lead,
+// then the stats inline so nothing wastes the width.
 function Hero({ stats }) {
   const s = stats ?? {}
   const value = formatUsd(s.total_value_usd)
   return (
-    <section className="pb-cover rounded-2xl p-5">
-      <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
-        <div className="min-w-0">
-          <div className="text-[10px] uppercase tracking-[0.16em] text-[var(--dim)]">
-            {value ? 'Binder value' : 'Your binder'}
-          </div>
-          <div className="pb-val pb-display mt-1 text-4xl font-bold leading-none">
-            {value ?? fmt(s.owned_unique)}
-          </div>
-          <div className="mt-2 text-xs text-[var(--dim)]">
-            {value ? `${fmt(s.owned_unique)} cards owned` : 'cards owned'}
-            {s.sets_completed
-              ? ` · ${fmt(s.sets_completed)} set${s.sets_completed === 1 ? '' : 's'} complete`
-              : ''}
-          </div>
-        </div>
-        <div className="flex gap-6">
-          <Stat label="Owned" value={fmt(s.owned_unique)} />
-          <Stat label="Copies" value={fmt(s.owned_total_qty)} />
-          <Stat label="Catalog" value={s.completion_pct != null ? `${s.completion_pct}%` : '—'} />
-        </div>
+    <section className="pb-cover flex flex-wrap items-center gap-x-8 gap-y-4 rounded-2xl px-6 py-5">
+      <div className="flex items-baseline gap-2.5">
+        <span className="pb-display text-4xl font-bold leading-none text-white sm:text-5xl">
+          {value ?? fmt(s.owned_unique)}
+        </span>
+        <span className="text-[11px] uppercase tracking-[0.16em] text-white/70">
+          {value ? 'Binder value' : 'cards owned'}
+        </span>
+      </div>
+      <div className="ml-auto flex flex-wrap items-center justify-end gap-x-8 gap-y-3">
+        {value && <Stat label="owned" value={fmt(s.owned_unique)} />}
+        {s.owned_total_qty !== s.owned_unique && <Stat label="copies" value={fmt(s.owned_total_qty)} />}
+        {s.sets_completed > 0 && (
+          <Stat label={`set${s.sets_completed === 1 ? '' : 's'} complete`} value={fmt(s.sets_completed)} />
+        )}
+        <Stat label="of catalog" value={s.completion_pct != null ? `${s.completion_pct}%` : '—'} />
       </div>
     </section>
   )
@@ -127,15 +125,15 @@ function Hero({ stats }) {
 
 function Stat({ label, value }) {
   return (
-    <div className="text-right">
-      <div className="pb-display text-xl font-bold tabular-nums text-[var(--ink)]">{value}</div>
-      <div className="text-[10px] uppercase tracking-wide text-[var(--dim)]">{label}</div>
-    </div>
+    <span className="flex items-baseline gap-1.5">
+      <span className="pb-display text-2xl font-bold tabular-nums text-[var(--ink)]">{value}</span>
+      <span className="text-sm text-[var(--dim)]">{label}</span>
+    </span>
   )
 }
 
 // The show-off wall: the cards you own, big. Empty until you start collecting.
-function ShowcaseWall({ cards, stats, onOpen }) {
+function ShowcaseWall({ cards, stats, sort, onOpen }) {
   if (!cards.length) {
     return (
       <section className="space-y-2">
@@ -150,9 +148,13 @@ function ShowcaseWall({ cards, stats, onOpen }) {
   const total = stats?.owned_unique ?? cards.length
   return (
     <section className="space-y-2">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
         <ShelfHeading>Your collection</ShelfHeading>
-        <Link to={cardsSearchHref('', { owned: true })} className="text-xs text-[var(--dim)] hover:text-[var(--ink)]">
+        <CollectionSortMenu />
+        <Link
+          to={cardsSearchHref('', { owned: true, sort })}
+          className="ml-auto text-xs text-[var(--dim)] hover:text-[var(--ink)]"
+        >
           {total > cards.length ? `See all ${fmt(total)} ›` : 'Search yours ›'}
         </Link>
       </div>
@@ -169,13 +171,16 @@ function ShowcaseWall({ cards, stats, onOpen }) {
   )
 }
 
-// Every set as a tile with a foil completion bar. Newest release first.
+// Sets, reorganized so the ones you actually collect sit up top: a "collecting"
+// grid first, then everything else behind a "Browse all" disclosure. A name
+// filter searches across every set (and takes over the view while it has text).
 function SetsGrid({ sets, loading, error }) {
-  return (
-    <section className="space-y-2">
-      <ShelfHeading>Sets</ShelfHeading>
-      {error && <p className="text-sm text-[var(--accent)]">unavailable — {error}</p>}
-      {loading ? (
+  const [filter, setFilter] = useState('')
+
+  if (loading) {
+    return (
+      <section className="space-y-2">
+        <ShelfHeading>Sets</ShelfHeading>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="pb-card rounded-2xl p-4">
@@ -184,28 +189,105 @@ function SetsGrid({ sets, loading, error }) {
             </div>
           ))}
         </div>
+      </section>
+    )
+  }
+
+  const q = filter.trim().toLowerCase()
+  const matches = (s) =>
+    s.name.toLowerCase().includes(q) || (s.series || '').toLowerCase().includes(q)
+  const collecting = sets
+    .filter((s) => s.owned > 0)
+    .sort(
+      (a, b) =>
+        completionPct(b.owned, b.card_count) - completionPct(a.owned, a.card_count) ||
+        b.owned - a.owned,
+    )
+  const rest = sets.filter((s) => s.owned === 0)
+
+  return (
+    <section className="space-y-4">
+      <div className="flex flex-wrap items-center gap-3">
+        <ShelfHeading>Sets</ShelfHeading>
+        {error && <p className="text-sm text-[var(--accent)]">unavailable — {error}</p>}
+        {sets.length > 0 && (
+          <input
+            type="search"
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            placeholder="Filter sets…"
+            aria-label="Filter sets by name"
+            className="pb-input ml-auto w-full rounded-xl px-3 py-2 text-sm sm:w-56"
+          />
+        )}
+      </div>
+
+      {q ? (
+        <SetTiles sets={sets.filter(matches)} empty="No sets match." />
+      ) : collecting.length > 0 ? (
+        <>
+          <div className="space-y-2">
+            <SubHeading>Sets you’re collecting</SubHeading>
+            <SetTiles sets={collecting} />
+          </div>
+          {rest.length > 0 && (
+            <details>
+              <summary className="cursor-pointer select-none text-sm text-[var(--dim)] hover:text-[var(--ink)]">
+                Browse all {fmt(rest.length)} other set{rest.length === 1 ? '' : 's'}
+              </summary>
+              <div className="mt-3">
+                <SetTiles sets={rest} />
+              </div>
+            </details>
+          )}
+        </>
       ) : (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {sets.map((s) => (
-            <SetCard key={s.setid} s={s} />
-          ))}
-        </div>
+        <SetTiles sets={sets} />
       )}
     </section>
   )
 }
 
+function SetTiles({ sets, empty }) {
+  if (!sets.length) return empty ? <p className="text-sm text-[var(--dim)]">{empty}</p> : null
+  return (
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      {sets.map((s) => (
+        <SetCard key={s.setid} s={s} />
+      ))}
+    </div>
+  )
+}
+
+function SubHeading({ children }) {
+  return <h4 className="text-xs font-medium uppercase tracking-wide text-[var(--dim)]">{children}</h4>
+}
+
 function SetCard({ s }) {
   const pct = completionPct(s.owned, s.card_count)
   const year = s.release_date ? s.release_date.slice(0, 4) : null
+  const complete = s.card_count > 0 && pct >= 100
+  // The series is often just the set's own family name ("Base" / "Base") — only
+  // show it when it adds something.
+  const series = s.series && s.series.toLowerCase() !== s.name.toLowerCase() ? s.series : ''
   return (
     <Link to={setHref(s.setid)} className="pb-card block rounded-2xl p-4 transition-colors hover:border-[var(--accent-line)]">
       <div className="flex items-baseline justify-between gap-2">
-        <span className="min-w-0 truncate font-medium text-[var(--ink)]">{s.name}</span>
+        <span className="flex min-w-0 items-baseline gap-1.5">
+          <span className="min-w-0 truncate font-medium text-[var(--ink)]">{s.name}</span>
+          {complete && (
+            <span
+              className="pb-foil shrink-0 rounded-full px-1.5 text-[10px] font-semibold leading-tight"
+              title="Set complete"
+            >
+              ✓
+            </span>
+          )}
+        </span>
         {year && <span className="shrink-0 text-xs text-[var(--dim)]">{year}</span>}
       </div>
       <div className="mt-1 flex items-center justify-between text-xs text-[var(--dim)]">
-        <span className="truncate">{s.series || ' '}</span>
+        <span className="truncate">{series || ' '}</span>
         <span className="shrink-0 tabular-nums">
           {fmt(s.owned)} / {fmt(s.card_count)}
         </span>
@@ -343,7 +425,7 @@ function NotConfigured() {
 }
 
 function ShelfHeading({ children }) {
-  return <h3 className="text-sm font-medium uppercase tracking-wide text-[var(--dim)]">{children}</h3>
+  return <h3 className="pb-display text-base font-semibold text-[var(--ink)]">{children}</h3>
 }
 
 function fmt(n) {

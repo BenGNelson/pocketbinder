@@ -10,13 +10,17 @@ describe('cards helpers', () => {
   })
 
   it('builds set + search hrefs', () => {
-    expect(setHref('swsh1')).toBe('/cards/sets/swsh1')
-    expect(cardsSearchHref('')).toBe('/cards/search')
-    expect(cardsSearchHref('pikachu')).toBe('/cards/search?q=pikachu')
-    expect(cardsSearchHref('a b')).toBe('/cards/search?q=a%20b')
+    expect(setHref('swsh1')).toBe('/sets/swsh1')
+    expect(cardsSearchHref('')).toBe('/search')
+    expect(cardsSearchHref('pikachu')).toBe('/search?q=pikachu')
+    expect(cardsSearchHref('a b')).toBe('/search?q=a%20b')
     // owned scope, with and without a query
-    expect(cardsSearchHref('', { owned: true })).toBe('/cards/search?owned=1')
-    expect(cardsSearchHref('pikachu', { owned: true })).toBe('/cards/search?q=pikachu&owned=1')
+    expect(cardsSearchHref('', { owned: true })).toBe('/search?owned=1')
+    expect(cardsSearchHref('pikachu', { owned: true })).toBe('/search?q=pikachu&owned=1')
+    // sort rides along, but the default ('name') is left off the URL
+    expect(cardsSearchHref('', { owned: true, sort: 'name' })).toBe('/search?owned=1')
+    expect(cardsSearchHref('', { owned: true, sort: 'value' })).toBe('/search?owned=1&sort=value')
+    expect(cardsSearchHref('', { sort: 'recent' })).toBe('/search?sort=recent')
   })
 
   it('computes completion percentage, guarding a zero denominator', () => {

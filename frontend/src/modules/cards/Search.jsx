@@ -11,6 +11,7 @@ export default function Search() {
   const [params, setParams] = useSearchParams()
   const query = params.get('q') || ''
   const ownedOnly = params.get('owned') === '1'
+  const sort = params.get('sort') || 'name'
   const [modalId, setModalId] = useState(null)
   const [edits, setEdits] = useState({})
 
@@ -23,14 +24,14 @@ export default function Search() {
   const setOwnedOnly = (on) => patch((n) => (on ? n.set('owned', '1') : n.delete('owned')))
 
   const q = encodeURIComponent(query.trim())
-  const { data, loading } = useApi(`/cards/search?q=${q}&owned=${ownedOnly ? 1 : 0}`, 0)
+  const { data, loading } = useApi(`/cards/search?q=${q}&owned=${ownedOnly ? 1 : 0}&sort=${sort}`, 0)
   const items = (data?.items ?? []).map((c) => (edits[c.id] ? { ...c, owned: edits[c.id].owned } : c))
 
   return (
     <div className="space-y-4">
       <nav className="flex flex-wrap items-center gap-1 text-sm text-[var(--dim)]">
-        <Link to="/cards" className="hover:text-[var(--ink)]">
-          Cards
+        <Link to="/" className="hover:text-[var(--ink)]">
+          Binder
         </Link>
         <span className="px-1 opacity-60">/</span>
         <span className="text-[var(--ink)]">Search</span>

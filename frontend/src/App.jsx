@@ -12,7 +12,7 @@ export default function App() {
     <div className="flex min-h-screen flex-col">
       <header className="pb-topbar sticky top-0 z-40 border-b border-[var(--line)] backdrop-blur">
         <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3">
-          <Link to="/cards" className="flex items-center gap-2">
+          <Link to="/" className="flex items-center gap-2">
             <span className="pb-ring block h-3.5 w-3.5 rounded-full" aria-hidden="true"></span>
             <span className="pb-wm pb-display text-xl font-bold tracking-tight">
               <span className="p">Pocket</span>
@@ -27,11 +27,13 @@ export default function App() {
 
       <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6">
         <Routes>
-          <Route path="/" element={<Navigate to="/cards" replace />} />
-          <Route path="/cards" element={<Cards />} />
-          <Route path="/cards/search" element={<Search />} />
-          <Route path="/cards/sets/:setid" element={<SetView />} />
-          <Route path="*" element={<Navigate to="/cards" replace />} />
+          <Route path="/" element={<Cards />} />
+          <Route path="/search" element={<Search />} />
+          <Route path="/sets/:setid" element={<SetView />} />
+          {/* Back-compat: the hub used to live under /cards. */}
+          <Route path="/cards" element={<Navigate to="/" replace />} />
+          <Route path="/cards/search" element={<Navigate to="/search" replace />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
 
