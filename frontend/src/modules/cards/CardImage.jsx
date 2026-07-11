@@ -12,21 +12,33 @@ import { cardImageUrl } from '../../lib/cards.js'
 export default function CardImage({ card, size = 'small', owned = false, dim = false, className = '' }) {
   const [failed, setFailed] = useState(false)
   const [revealing, setRevealing] = useState(false)
+  const [unrevealing, setUnrevealing] = useState(false)
   const wasOwned = useRef(owned)
 
   useEffect(() => {
-    if (owned && !wasOwned.current) setRevealing(true)
+    if (owned && !wasOwned.current) {
+      setRevealing(true)
+      setUnrevealing(false)
+    } else if (!owned && wasOwned.current) {
+      setUnrevealing(true)
+      setRevealing(false)
+    }
     wasOwned.current = owned
   }, [owned])
 
+  const animating = revealing || unrevealing
+
   return (
     <div
-      onAnimationEnd={() => setRevealing(false)}
+      onAnimationEnd={() => {
+        setRevealing(false)
+        setUnrevealing(false)
+      }}
       className={`relative aspect-[5/7] overflow-hidden rounded-md bg-[var(--raised)] ${
         owned ? 'pb-seated' : ''
-      } ${dim && !revealing ? 'opacity-45 grayscale' : ''} ${
+      } ${dim && !animating ? 'opacity-45 grayscale' : ''} ${
         revealing ? 'pb-reveal pb-shine' : ''
-      } ${className}`}
+      } ${unrevealing ? 'pb-unreveal' : ''} ${className}`}
     >
       {failed ? (
         <div className="flex h-full w-full flex-col items-center justify-center gap-1 p-2 text-center">
