@@ -2,17 +2,17 @@ import { useEffect, useRef, useState } from 'react'
 import { cardImageUrl } from '../../lib/cards.js'
 
 // A card face with a graceful fallback: if the proxy 404s (no image), show a
-// titled placeholder instead of a broken image. `dim` greys + fades a card you
+// titled placeholder instead of a broken image. `dim` grays + fades a card you
 // don't own; `owned` seats it with a foil edge. Aspect 5:7 is the standard
 // Pokémon card ratio (63×88mm).
 //
 // When `owned` transitions false→true (you just added it), the face plays a
 // one-shot "reveal": a flip-to-color pop with a holographic shine. Self-clearing
-// (onAnimationEnd) and honours prefers-reduced-motion via CSS.
+// (onAnimationEnd) and honors prefers-reduced-motion via CSS.
 //
-// `peek` momentarily lifts the greyscale on a card you don't own (a soft color
+// `peek` momentarily lifts the grayscale on a card you don't own (a soft color
 // bloom) — "hold it up to the light" without collecting it. `lift` adds the scale
-// pop (nice in a grid, to rise above neighbours; off in the modal, where the growth
+// pop (nice in a grid, to rise above neighbors; off in the modal, where the growth
 // would just crowd the controls).
 export default function CardImage({ card, size = 'small', owned = false, dim = false, peek = false, lift = true, className = '' }) {
   const [failed, setFailed] = useState(false)
@@ -32,7 +32,7 @@ export default function CardImage({ card, size = 'small', owned = false, dim = f
   }, [owned])
 
   const animating = revealing || unrevealing
-  const greyed = dim && !animating && !peek
+  const grayed = dim && !animating && !peek
   const blooming = dim && peek && !animating
 
   return (
@@ -43,7 +43,7 @@ export default function CardImage({ card, size = 'small', owned = false, dim = f
       }}
       className={`relative aspect-[5/7] overflow-hidden rounded-md bg-[var(--raised)] ${
         !animating ? 'transition-[filter,opacity,transform] duration-300 motion-reduce:transition-none' : ''
-      } ${owned ? 'pb-seated' : ''} ${greyed ? 'opacity-45 grayscale' : ''} ${
+      } ${owned ? 'pb-seated' : ''} ${grayed ? 'opacity-45 grayscale' : ''} ${
         blooming && lift ? 'z-10 scale-[1.04] shadow-[var(--shadow)]' : ''
       } ${revealing ? 'pb-reveal pb-shine' : ''} ${unrevealing ? 'pb-unreveal' : ''} ${className}`}
     >

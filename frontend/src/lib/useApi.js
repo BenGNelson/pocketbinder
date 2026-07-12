@@ -21,7 +21,7 @@ export function useApi(path, intervalMs = 5000) {
   const [state, setState] = useState({ data: null, error: null, loading: true })
 
   useEffect(() => {
-    let cancelled = false
+    let canceled = false
     // A null/empty path means "nothing to fetch" — settle idle, make no request.
     if (!path) {
       setState({ data: null, error: null, loading: false })
@@ -34,9 +34,9 @@ export function useApi(path, intervalMs = 5000) {
         const res = await fetch(`${API_BASE}${path}`)
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         const json = await res.json()
-        if (!cancelled) setState({ data: json, error: null, loading: false })
+        if (!canceled) setState({ data: json, error: null, loading: false })
       } catch (err) {
-        if (!cancelled)
+        if (!canceled)
           setState((s) => ({ data: s.data, error: err.message, loading: false }))
       }
     }
@@ -66,7 +66,7 @@ export function useApi(path, intervalMs = 5000) {
     document.addEventListener('visibilitychange', onVisibility)
 
     return () => {
-      cancelled = true
+      canceled = true
       stopPolling()
       document.removeEventListener('visibilitychange', onVisibility)
     }
