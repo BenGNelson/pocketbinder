@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useApi, API_BASE } from '../../lib/useApi.js'
-import { SkeletonLine } from '../../components/ui.jsx'
-import { setHref, cardsSearchHref, completionPct, formatUsd } from '../../lib/cards.js'
+import { SkeletonLine, PriceChip } from '../../components/ui.jsx'
+import { setHref, cardsSearchHref, completionPct, formatUsd, formatUsdShort } from '../../lib/cards.js'
 import { useCollectionSort } from '../../lib/settings.js'
 import CollectionSortMenu from '../../components/CollectionSortMenu.jsx'
 import CardImage from './CardImage.jsx'
@@ -150,8 +150,9 @@ function ShowcaseWall({ cards, stats, sort, onOpen }) {
       <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-6">
         {cards.map((c) => (
           <button key={c.id} onClick={() => onOpen(c.id)} className="block text-left active:scale-[0.97]">
-            <div className="pb-pocket rounded-[11px] p-1">
+            <div className="pb-pocket relative rounded-[11px] p-1">
               <CardImage card={c} owned />
+              <PriceChip usd={c.tcgplayer_usd} />
             </div>
           </button>
         ))}
@@ -259,6 +260,7 @@ function SetCard({ s }) {
   // The series is often just the set's own family name ("Base" / "Base") — only
   // show it when it adds something.
   const series = s.series && s.series.toLowerCase() !== s.name.toLowerCase() ? s.series : ''
+  const value = formatUsdShort(s.owned_value_usd)
   return (
     <Link to={setHref(s.setid)} className="pb-card block rounded-2xl p-4 transition-colors hover:border-[var(--accent-line)]">
       <div className="flex items-baseline justify-between gap-2">
@@ -275,8 +277,12 @@ function SetCard({ s }) {
         </span>
         {year && <span className="shrink-0 text-xs text-[var(--dim)]">{year}</span>}
       </div>
-      <div className="mt-1 flex items-center justify-between text-xs text-[var(--dim)]">
-        <span className="truncate">{series || ' '}</span>
+      <div className="mt-1 flex items-center justify-between gap-2 text-xs text-[var(--dim)]">
+        <span className="min-w-0 truncate">
+          {value && <span className="pb-val font-semibold tabular-nums">{value}</span>}
+          {value && series && <span className="px-1 opacity-50">·</span>}
+          {series || (value ? '' : ' ')}
+        </span>
         <span className="shrink-0 tabular-nums">
           {fmt(s.owned)} / {fmt(s.card_count)}
         </span>

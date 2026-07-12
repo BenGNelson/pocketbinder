@@ -215,6 +215,26 @@ def test_ownership_overlay_and_completion(catalog):
     assert stats["total_value_usd"] is None  # no prices configured
 
 
+def test_set_owned_value(client, catalog):
+    """Per-set owned value = price × qty over the copies you own, surfaced on both
+    the set list and the set detail; None (omitted) until prices are configured."""
+    db.replace_ownership("imported", [
+        {"card_id": "base1-4", "variant": "normal", "qty": 2},
+        {"card_id": "base1-2", "variant": "normal", "qty": 1},
+    ])
+    # No prices yet → the value is null (excluded from the response) everywhere.
+    sets = {s["setid"]: s for s in client.get("/api/cards/sets").json()["sets"]}
+    assert sets["base1"].get("owned_value_usd") is None
+    assert client.get("/api/cards/sets/base1").json()["set"].get("owned_value_usd") is None
+
+    db.update_card_prices("base1-4", 300.0, None)  # 2 × 300 = 600
+    db.update_card_prices("base1-2", 90.0, None)   # 1 × 90  = 90
+    sets = {s["setid"]: s for s in client.get("/api/cards/sets").json()["sets"]}
+    assert sets["base1"]["owned_value_usd"] == 690.0
+    assert sets["swsh1"].get("owned_value_usd") is None  # own nothing there
+    assert client.get("/api/cards/sets/base1").json()["set"]["owned_value_usd"] == 690.0
+
+
 def test_stats_ignores_orphaned_ownership(catalog):
     """An ownership row for a card the catalog has since pruned must NOT inflate
     owned counts or push completion above 100% (stats join `cards`)."""

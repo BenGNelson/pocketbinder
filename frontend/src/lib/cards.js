@@ -53,3 +53,13 @@ export function formatUsd(v) {
     maximumFractionDigits: 2,
   })}`
 }
+
+// A compact USD string for tight spots (the tile/set-card value chips): whole
+// dollars once you're at $10+ (cents only matter on the cheap cards), thousands
+// separated. Null when there's nothing to show, same as formatUsd.
+export function formatUsdShort(v) {
+  if (v == null) return null
+  const n = Number(v)
+  const digits = n >= 10 ? 0 : 2
+  return `$${n.toLocaleString(undefined, { minimumFractionDigits: digits, maximumFractionDigits: digits })}`
+}

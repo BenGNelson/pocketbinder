@@ -60,6 +60,13 @@ def _completion_pct(owned, total):
     return round(100 * owned / total, 1) if total else 0.0
 
 
+def _value_or_none(v):
+    """A rounded USD value, or None when there's nothing priced — so the UI hides
+    the value chip instead of showing '$0.00' before a price refresh (mirrors the
+    total_value_usd convention on the collection stats)."""
+    return round(v, 2) if v else None
+
+
 # --- response models -------------------------------------------------------
 
 
@@ -85,6 +92,9 @@ class SetSummaryModel(BaseModel):
     card_count: int = Field(description="Cards for this set in the catalog")
     owned: int = Field(description="Distinct owned cards in this set")
     completion_pct: float
+    owned_value_usd: float | None = Field(
+        default=None, description="Market value of the copies you own in this set (null until prices are configured)"
+    )
     logo_url: str | None = None
     symbol_url: str | None = None
 
@@ -202,6 +212,7 @@ def cards_sets():
     sets = []
     for s in db.list_card_sets_with_counts():
         s["completion_pct"] = _completion_pct(s["owned"], s["card_count"])
+        s["owned_value_usd"] = _value_or_none(s.pop("owned_value", 0))
         sets.append(s)
     return {"sets": sets}
 
@@ -231,9 +242,14 @@ def cards_set_detail(setid: str):
         raise HTTPException(status_code=404, detail="Set not found")
     cards = db.list_set_cards(setid)
     owned = sum(1 for c in cards if c.get("owned"))
+    value = sum(
+        c["tcgplayer_usd"] * (c.get("owned_qty") or 0)
+        for c in cards if c.get("owned") and c.get("tcgplayer_usd")
+    )
     meta["card_count"] = len(cards)
     meta["owned"] = owned
     meta["completion_pct"] = _completion_pct(owned, len(cards))
+    meta["owned_value_usd"] = _value_or_none(value)
     return {"set": meta, "cards": [_brief(c) for c in cards]}
 
 

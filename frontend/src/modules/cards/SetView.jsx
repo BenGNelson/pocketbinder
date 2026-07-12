@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { useApi } from '../../lib/useApi.js'
 import { SkeletonLine } from '../../components/ui.jsx'
-import { completionPct } from '../../lib/cards.js'
+import { completionPct, formatUsdShort } from '../../lib/cards.js'
 import CardTile from './CardTile.jsx'
 import CardModal from './CardModal.jsx'
 
@@ -35,6 +35,11 @@ export default function SetView() {
     [data, edits],
   )
   const ownedCount = allCards.filter((c) => c.owned).length
+  // Summed client-side (not the server field) so it tracks optimistic toggles.
+  const ownedValue = allCards.reduce(
+    (sum, c) => sum + (c.owned && c.tcgplayer_usd ? c.tcgplayer_usd * (c.owned_qty || 1) : 0),
+    0,
+  )
   const cards = ownedOnly ? allCards.filter((c) => c.owned) : allCards
 
   return (
@@ -56,6 +61,12 @@ export default function SetView() {
             <div className="flex items-baseline justify-between gap-3">
               <h2 className="pb-display text-xl font-semibold text-[var(--ink)]">{meta.name}</h2>
               <span className="shrink-0 text-sm tabular-nums text-[var(--dim)]">
+                {ownedValue > 0 && (
+                  <>
+                    <span className="pb-val font-semibold">{formatUsdShort(ownedValue)}</span>
+                    <span className="px-1.5 opacity-50">·</span>
+                  </>
+                )}
                 {ownedCount.toLocaleString()} / {meta.card_count.toLocaleString()} ·{' '}
                 {completionPct(ownedCount, meta.card_count)}%
               </span>

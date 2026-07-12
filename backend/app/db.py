@@ -234,7 +234,10 @@ def list_card_sets_with_counts():
             "SELECT s.setid, s.name, s.series, s.printed_total, s.total, "
             "       s.ptcgo_code, s.release_date, s.symbol_url, s.logo_url, "
             "       COUNT(DISTINCT c.id) AS card_count, "
-            "       COUNT(DISTINCT o.card_id) AS owned "
+            "       COUNT(DISTINCT o.card_id) AS owned, "
+            # Value of the copies you own in this set (price × qty, summed over the
+            # owned variants); NULL for cards with no price, ignored by SUM.
+            "       COALESCE(SUM(c.tcgplayer_usd * o.qty), 0) AS owned_value "
             "FROM card_sets s "
             "LEFT JOIN cards c ON c.setid = s.setid "
             "LEFT JOIN card_ownership o ON o.card_id = c.id AND o.qty > 0 "
@@ -281,7 +284,7 @@ def list_set_cards(setid):
     (owned flag, total owned qty across variants, wishlist flag)."""
     with get_conn() as conn:
         rows = conn.execute(
-            f"SELECT {_CARD_LIST_COLS}, "
+            f"SELECT {_CARD_LIST_COLS}, c.tcgplayer_usd, "
             "  MAX(CASE WHEN o.qty > 0 THEN 1 ELSE 0 END) AS owned, "
             "  COALESCE(SUM(CASE WHEN o.qty > 0 THEN o.qty ELSE 0 END), 0) AS owned_qty, "
             "  MAX(COALESCE(o.wishlist, 0)) AS wishlist "

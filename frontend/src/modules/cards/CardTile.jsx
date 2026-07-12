@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import CardImage from './CardImage.jsx'
 import OwnToggle from './OwnToggle.jsx'
+import { PriceChip } from '../../components/ui.jsx'
 import { ownCard, unownCard } from '../../lib/ownership.js'
 
 // One card in a browse grid: the face seated in a recessed binder pocket (opens
@@ -39,11 +40,12 @@ export default function CardTile({ card, label, onOpen, onOwnedChange, selectabl
         title={card.name}
       >
         <div
-          className={`pb-pocket rounded-[11px] p-1 ${
+          className={`pb-pocket relative rounded-[11px] p-1 ${
             selectable && selected ? 'ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--bg)]' : ''
           }`}
         >
           <CardImage card={card} owned={card.owned} dim={!card.owned} />
+          <PriceChip usd={card.tcgplayer_usd} />
         </div>
         {label && <span className="mt-1 block truncate text-xs text-[var(--dim)]">{label}</span>}
       </button>
