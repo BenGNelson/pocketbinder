@@ -35,11 +35,13 @@ export default function CardModal({ cardId, onClose, onMutated }) {
   const eff = local ?? {
     qty: baseNormal?.qty ?? 0,
     wishlist: !!(baseNormal && baseNormal.qty === 0 && baseNormal.wishlist),
+    favorite: !!baseNormal?.favorite,
     printing: baseNormal?.printing ?? 'unlimited',
   }
   const isOwned = eff.qty > 0
   const isWishlist = eff.qty === 0 && eff.wishlist
   const qty = eff.qty
+  const favorite = !!eff.favorite
   const printing = eff.printing ?? 'unlimited'
   const others = data?.ownership?.filter((o) => o.variant !== 'normal' && o.qty > 0) ?? []
 
@@ -48,7 +50,7 @@ export default function CardModal({ cardId, onClose, onMutated }) {
     const prev = local
     setLocal(next)
     setBusy(true)
-    onMutated?.(cardId, { owned: next.qty > 0, qty: next.qty })
+    onMutated?.(cardId, { owned: next.qty > 0, qty: next.qty, favorite: !!next.favorite })
     try {
       let url = `${API_BASE}/cards/ownership`
       const opts = { method }
@@ -69,25 +71,39 @@ export default function CardModal({ cardId, onClose, onMutated }) {
     }
   }
 
+  // Owned edits carry the current `favorite` so tweaking qty/printing never drops
+  // the star; toggling the star keeps qty (min 1 — you favorite a card you own).
   const markOwned = () =>
-    apply({ qty: 1, wishlist: false, printing }, 'PUT', { card_id: cardId, variant: 'normal', qty: 1, wishlist: false, printing })
-  const unown = () => apply({ qty: 0, wishlist: false }, 'DELETE', { card_id: cardId, variant: 'normal' })
+    apply({ qty: 1, wishlist: false, favorite, printing }, 'PUT', { card_id: cardId, variant: 'normal', qty: 1, wishlist: false, favorite, printing })
+  const unown = () => apply({ qty: 0, wishlist: false, favorite: false }, 'DELETE', { card_id: cardId, variant: 'normal' })
   const setQty = (n) =>
     n <= 0
       ? unown()
-      : apply({ qty: n, wishlist: false, printing }, 'PUT', { card_id: cardId, variant: 'normal', qty: n, wishlist: false, printing })
+      : apply({ qty: n, wishlist: false, favorite, printing }, 'PUT', { card_id: cardId, variant: 'normal', qty: n, wishlist: false, favorite, printing })
   const setPrinting = (p) =>
-    apply({ qty: Math.max(1, qty), wishlist: false, printing: p }, 'PUT', {
+    apply({ qty: Math.max(1, qty), wishlist: false, favorite, printing: p }, 'PUT', {
       card_id: cardId,
       variant: 'normal',
       qty: Math.max(1, qty),
       wishlist: false,
+      favorite,
       printing: p,
     })
+  const toggleFavorite = () => {
+    const n = Math.max(1, qty)
+    apply({ qty: n, wishlist: false, favorite: !favorite, printing }, 'PUT', {
+      card_id: cardId,
+      variant: 'normal',
+      qty: n,
+      wishlist: false,
+      favorite: !favorite,
+      printing,
+    })
+  }
   const toggleWishlist = () =>
     isWishlist
       ? unown()
-      : apply({ qty: 0, wishlist: true }, 'PUT', { card_id: cardId, variant: 'normal', qty: 0, wishlist: true })
+      : apply({ qty: 0, wishlist: true, favorite: false }, 'PUT', { card_id: cardId, variant: 'normal', qty: 0, wishlist: true })
 
   return (
     <div
@@ -151,6 +167,19 @@ export default function CardModal({ cardId, onClose, onMutated }) {
                         <span className="w-6 text-center text-sm tabular-nums text-[var(--ink)]">{qty}</span>
                         <StepBtn onClick={() => setQty(qty + 1)} disabled={busy} label="+" aria="Increase quantity" />
                       </div>
+                      <button
+                        onClick={toggleFavorite}
+                        disabled={busy}
+                        aria-pressed={favorite}
+                        title={favorite ? 'Remove from favorites' : 'Add to favorites'}
+                        className={`rounded-lg border px-2.5 py-1 text-sm font-medium active:scale-95 disabled:opacity-50 ${
+                          favorite
+                            ? 'border-amber-500/50 bg-amber-500/15 text-amber-600 dark:text-amber-300'
+                            : 'pb-btn-ghost'
+                        }`}
+                      >
+                        {favorite ? '★ Favorite' : '☆ Favorite'}
+                      </button>
                       <button
                         onClick={unown}
                         disabled={busy}

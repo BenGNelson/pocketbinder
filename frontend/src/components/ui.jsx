@@ -19,3 +19,19 @@ export function PriceChip({ usd }) {
     </span>
   )
 }
+
+// A star badge pinning a favorited card, top-left of the pocket (clear of the
+// owned-toggle top-right and the price chip bottom-left). Renders nothing when
+// the card isn't a favorite.
+export function FavoriteStar({ on }) {
+  if (!on) return null
+  return (
+    <span
+      className="pointer-events-none absolute left-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-amber-400/90 text-xs font-bold leading-none text-amber-950 shadow"
+      aria-label="Favorite"
+      title="Favorite"
+    >
+      ★
+    </span>
+  )
+}

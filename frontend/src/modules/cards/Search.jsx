@@ -25,7 +25,9 @@ export default function Search() {
 
   const q = encodeURIComponent(query.trim())
   const { data, loading } = useApi(`/cards/search?q=${q}&owned=${ownedOnly ? 1 : 0}&sort=${sort}`, 0)
-  const items = (data?.items ?? []).map((c) => (edits[c.id] ? { ...c, owned: edits[c.id].owned } : c))
+  const items = (data?.items ?? []).map((c) =>
+    edits[c.id] ? { ...c, owned: edits[c.id].owned, favorite: edits[c.id].favorite ?? c.favorite } : c,
+  )
 
   return (
     <div className="space-y-4">

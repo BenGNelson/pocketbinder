@@ -114,6 +114,7 @@ class CardBriefModel(BaseModel):
     owned: bool = False
     owned_qty: int = 0
     wishlist: bool = False
+    favorite: bool = False
     tcgplayer_usd: float | None = None
 
 
@@ -133,6 +134,7 @@ class OwnershipRowModel(BaseModel):
     qty: int
     condition: str | None = None
     wishlist: bool = False
+    favorite: bool = False
     notes: str | None = None
     printing: str | None = Field(default=None, description="Which printing you own: unlimited (default) | 1st_edition | shadowless")
     source: str = Field(description="'imported' (bulk import) or 'manual' (in-app edit)")
@@ -170,6 +172,7 @@ class OwnershipUpdate(BaseModel):
     qty: int = Field(default=1, ge=0)
     condition: str | None = None
     wishlist: bool = False
+    favorite: bool = False
     notes: str | None = None
     printing: str | None = None
 
@@ -230,6 +233,7 @@ def _brief(row):
         "owned": bool(row.get("owned")),
         "owned_qty": row.get("owned_qty", 0) or 0,
         "wishlist": bool(row.get("wishlist")),
+        "favorite": bool(row.get("favorite")),
         "tcgplayer_usd": row.get("tcgplayer_usd"),
     }
 
@@ -331,6 +335,7 @@ def cards_card_detail(card_id: str):
                 "qty": o["qty"],
                 "condition": o["condition"],
                 "wishlist": bool(o["wishlist"]),
+                "favorite": bool(o["favorite"]),
                 "notes": o["notes"],
                 "printing": o["printing"],
                 "source": o["source"],
@@ -436,6 +441,7 @@ def cards_ownership_put(body: OwnershipUpdate):
         qty=body.qty,
         condition=body.condition,
         wishlist=1 if body.wishlist else 0,
+        favorite=1 if body.favorite else 0,
         notes=body.notes,
         printing=body.printing,
         source="manual",

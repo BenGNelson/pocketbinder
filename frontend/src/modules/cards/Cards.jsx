@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useApi, API_BASE } from '../../lib/useApi.js'
-import { SkeletonLine, PriceChip } from '../../components/ui.jsx'
+import { SkeletonLine, PriceChip, FavoriteStar } from '../../components/ui.jsx'
 import { setHref, cardsSearchHref, completionPct, formatUsd, formatUsdShort } from '../../lib/cards.js'
 import { useCollectionSort } from '../../lib/settings.js'
 import CollectionSortMenu from '../../components/CollectionSortMenu.jsx'
@@ -153,6 +153,7 @@ function ShowcaseWall({ cards, stats, sort, onOpen }) {
             <div className="pb-pocket relative rounded-[11px] p-1">
               <CardImage card={c} owned />
               <PriceChip usd={c.tcgplayer_usd} />
+              <FavoriteStar on={c.favorite} />
             </div>
           </button>
         ))}

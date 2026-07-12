@@ -70,6 +70,7 @@ CREATE TABLE IF NOT EXISTS card_ownership (
     qty        INTEGER NOT NULL DEFAULT 1,
     condition  TEXT,
     wishlist   INTEGER NOT NULL DEFAULT 0,       -- 1 = want (qty may be 0)
+    favorite   INTEGER NOT NULL DEFAULT 0,       -- 1 = pinned to the top of your collection
     notes      TEXT,
     printing   TEXT,                             -- which printing you own: unlimited (default)|1st_edition|shadowless
     source     TEXT NOT NULL DEFAULT 'imported',  -- 'imported' | 'manual'
@@ -105,6 +106,7 @@ def init_db():
         # Migrations for DBs created before a column existed (CREATE TABLE
         # IF NOT EXISTS won't add columns to an existing table).
         _add_column_if_missing(conn, "card_ownership", "printing", "TEXT")
+        _add_column_if_missing(conn, "card_ownership", "favorite", "INTEGER NOT NULL DEFAULT 0")
 
 
 def _add_column_if_missing(conn, table, column, decl):
@@ -287,7 +289,8 @@ def list_set_cards(setid):
             f"SELECT {_CARD_LIST_COLS}, c.tcgplayer_usd, "
             "  MAX(CASE WHEN o.qty > 0 THEN 1 ELSE 0 END) AS owned, "
             "  COALESCE(SUM(CASE WHEN o.qty > 0 THEN o.qty ELSE 0 END), 0) AS owned_qty, "
-            "  MAX(COALESCE(o.wishlist, 0)) AS wishlist "
+            "  MAX(COALESCE(o.wishlist, 0)) AS wishlist, "
+            "  MAX(COALESCE(o.favorite, 0)) AS favorite "
             "FROM cards c LEFT JOIN card_ownership o ON o.card_id = c.id "
             "WHERE c.setid = ? "
             "GROUP BY c.id "
@@ -305,6 +308,8 @@ _SEARCH_SORTS = {
     "value": "c.tcgplayer_usd IS NULL, c.tcgplayer_usd DESC, c.name COLLATE NOCASE",
     "recent": "updated_ms IS NULL, updated_ms DESC, c.name COLLATE NOCASE",
     "set": "s.release_date IS NULL, s.release_date DESC, c.sort_order, c.number",
+    # Favorites first, then the priciest — so the cards you've starred lead the wall.
+    "favorite": "favorite DESC, c.tcgplayer_usd IS NULL, c.tcgplayer_usd DESC, c.name COLLATE NOCASE",
 }
 
 
@@ -335,6 +340,7 @@ def search_cards(q, owned=False, missing=False, limit=100, sort="name", setids=N
             "  MAX(CASE WHEN o.qty > 0 THEN 1 ELSE 0 END) AS owned, "
             "  COALESCE(SUM(CASE WHEN o.qty > 0 THEN o.qty ELSE 0 END), 0) AS owned_qty, "
             "  MAX(COALESCE(o.wishlist, 0)) AS wishlist, "
+            "  MAX(COALESCE(o.favorite, 0)) AS favorite, "
             "  MAX(o.updated_ms) AS updated_ms "
             "FROM cards c LEFT JOIN card_ownership o ON o.card_id = c.id "
             f"{join_sets}{where}"
@@ -358,7 +364,7 @@ def get_card(card_id):
             return None
         card = dict(row)
         owns = conn.execute(
-            "SELECT variant, qty, condition, wishlist, notes, printing, source, updated_ms "
+            "SELECT variant, qty, condition, wishlist, favorite, notes, printing, source, updated_ms "
             "FROM card_ownership WHERE card_id = ? ORDER BY variant",
             (card_id,),
         ).fetchall()
@@ -485,22 +491,22 @@ def replace_ownership(source, rows, now_ms=None):
 
 
 def upsert_ownership(card_id, variant="normal", qty=1, condition=None,
-                     wishlist=0, notes=None, printing=None, source="manual", now_ms=None):
+                     wishlist=0, favorite=0, notes=None, printing=None, source="manual", now_ms=None):
     """Upsert one ownership row (the living-tracker edit path). Defaults to
     source='manual' so it survives a later re-import."""
     now_ms = now_ms if now_ms is not None else int(time.time() * 1000)
     with get_conn() as conn:
         conn.execute(
             "INSERT INTO card_ownership "
-            "(card_id, variant, qty, condition, wishlist, notes, printing, source, updated_ms) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) "
+            "(card_id, variant, qty, condition, wishlist, favorite, notes, printing, source, updated_ms) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
             "ON CONFLICT(card_id, variant) DO UPDATE SET "
             "qty = excluded.qty, condition = excluded.condition, "
-            "wishlist = excluded.wishlist, notes = excluded.notes, "
+            "wishlist = excluded.wishlist, favorite = excluded.favorite, notes = excluded.notes, "
             "printing = excluded.printing, "
             "source = excluded.source, updated_ms = excluded.updated_ms",
             (card_id, variant, int(qty or 0), condition, int(wishlist or 0),
-             notes, printing, source, now_ms),
+             int(favorite or 0), notes, printing, source, now_ms),
         )
 
 

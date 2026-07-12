@@ -323,6 +323,22 @@ def test_search_sort_by_set_newest_first(catalog):
     assert ids == ["swsh1-1", "base1-4"]  # swsh1 (2020) before base1 (1999)
 
 
+def test_favorite_pins_to_top_and_roundtrips(catalog):
+    """A favorited card leads under sort='favorite', carries the flag on the brief,
+    and survives a get_card roundtrip."""
+    db.upsert_ownership("base1-58", qty=1)              # Pikachu, not favorite
+    db.upsert_ownership("base1-2", qty=1, favorite=1)   # Blastoise, favorite
+    db.upsert_ownership("base1-4", qty=1)               # Charizard, not favorite
+    db.update_card_prices("base1-4", 300.0, None)       # priciest, yet not pinned
+    ids = [c["id"] for c in db.search_cards("", owned=True, sort="favorite")]
+    assert ids[0] == "base1-2"  # the favorite leads despite Charizard being pricier
+    cards = {c["id"]: c for c in db.search_cards("", owned=True)}
+    assert cards["base1-2"]["favorite"] == 1
+    assert cards["base1-4"]["favorite"] == 0
+    # The flag persists on the full card detail.
+    assert next(o for o in db.get_card("base1-2")["ownership"])["favorite"] == 1
+
+
 def test_search_unknown_sort_falls_back_to_name(catalog):
     """An unrecognized sort value degrades to the default name ordering."""
     for cid in ("base1-2", "base1-4", "base1-58"):

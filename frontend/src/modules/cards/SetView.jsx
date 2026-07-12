@@ -30,7 +30,9 @@ export default function SetView() {
   const allCards = useMemo(
     () =>
       (data?.cards ?? []).map((c) =>
-        edits[c.id] ? { ...c, owned: edits[c.id].owned, owned_qty: edits[c.id].qty } : c,
+        edits[c.id]
+          ? { ...c, owned: edits[c.id].owned, owned_qty: edits[c.id].qty, favorite: edits[c.id].favorite ?? c.favorite }
+          : c,
       ),
     [data, edits],
   )

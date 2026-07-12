@@ -10,6 +10,7 @@ const KEY = 'pb-collection-sort'
 // (see db._SEARCH_SORTS); `label` is what the settings menu shows.
 export const COLLECTION_SORTS = [
   { id: 'value', label: 'Value · high to low', short: 'value' },
+  { id: 'favorite', label: 'Favorites first', short: 'favorites' },
   { id: 'name', label: 'Name · A to Z', short: 'name' },
   { id: 'recent', label: 'Recently added', short: 'recently added' },
   { id: 'set', label: 'Set · newest first', short: 'set' },
