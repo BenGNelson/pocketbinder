@@ -74,6 +74,7 @@ class CollectionStatsModel(BaseModel):
     owned_unique: int = Field(description="Distinct cards owned (any variant)")
     owned_total_qty: int = Field(description="Total copies owned across all cards")
     sets: int = Field(description="Sets in the catalog")
+    sets_in_progress: int = Field(description="Sets you've started (own ≥1 card in)")
     sets_completed: int = Field(description="Sets where every catalogued card is owned")
     completion_pct: float = Field(description="Owned cards as a % of the whole catalog")
     total_value_usd: float | None = Field(

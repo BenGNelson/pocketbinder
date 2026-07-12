@@ -235,6 +235,20 @@ def test_set_owned_value(client, catalog):
     assert client.get("/api/cards/sets/base1").json()["set"]["owned_value_usd"] == 690.0
 
 
+def test_stats_sets_in_progress_and_completed(catalog):
+    """sets_in_progress counts every set you've started (own ≥1 card in);
+    sets_completed counts only the fully-owned ones."""
+    db.replace_ownership("imported", [
+        {"card_id": "base1-2", "variant": "normal", "qty": 1},
+        {"card_id": "base1-4", "variant": "normal", "qty": 1},
+        {"card_id": "base1-58", "variant": "normal", "qty": 1},  # all 3 of base1 → complete
+        {"card_id": "swsh1-1", "variant": "normal", "qty": 1},   # started swsh1, not complete
+    ])
+    stats = db.collection_stats()
+    assert stats["sets_in_progress"] == 2  # base1 + swsh1
+    assert stats["sets_completed"] == 1    # only base1 is fully owned
+
+
 def test_stats_ignores_orphaned_ownership(catalog):
     """An ownership row for a card the catalog has since pruned must NOT inflate
     owned counts or push completion above 100% (stats join `cards`)."""

@@ -397,6 +397,12 @@ def collection_stats():
         ).fetchone()
         sets_total = conn.execute("SELECT COUNT(*) AS n FROM card_sets").fetchone()["n"]
         cards_total = conn.execute("SELECT COUNT(*) AS n FROM cards").fetchone()["n"]
+        # Sets you've STARTED — own ≥1 card in (joined to the catalog so an orphaned
+        # ownership row for a pruned card doesn't count a phantom set).
+        in_progress = conn.execute(
+            "SELECT COUNT(DISTINCT c.setid) AS n "
+            "FROM card_ownership o JOIN cards c ON c.id = o.card_id WHERE o.qty > 0"
+        ).fetchone()["n"]
         completed = conn.execute(
             "SELECT COUNT(*) AS n FROM ("
             "  SELECT s.setid, COUNT(DISTINCT c.id) AS cc, "
@@ -417,6 +423,7 @@ def collection_stats():
         "owned_unique": owned_unique,
         "owned_total_qty": own["owned_qty"] or 0,
         "sets": sets_total,
+        "sets_in_progress": in_progress,
         "sets_completed": completed,
         "completion_pct": round(100 * owned_unique / cards_total, 1) if cards_total else 0.0,
         # None (not 0) when there's no priced value — so the UI hides the value tile
