@@ -8,6 +8,12 @@ value, and build a TCGplayer shopping list for the cards you're still missing.
 
 _AI-assisted build._
 
+![PocketBinder — a value-sorted wall of your collection, with per-card prices and
+starred favorites](docs/hero.png)
+
+<sub>Card faces above are placeholders — real card art loads at runtime and isn't
+redistributed by this repo (see the disclaimer below).</sub>
+
 ---
 
 ## What it does
