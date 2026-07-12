@@ -9,8 +9,8 @@ import { ownCard, unownCard } from '../../lib/ownership.js'
 // owned — then persists; a failure rolls the optimistic state back.
 // `onOwnedChange(id, owned)` lets the parent update its edits overlay + stats.
 //
-// In `selectable` mode the card instead toggles a buy-list selection: tapping it
-// calls `onSelect(id)` and it shows a check when `selected`.
+// In `selectable` mode the card instead toggles a shopping-list selection: tapping
+// it calls `onSelect(card)` and it shows a check when `selected`.
 export default function CardTile({ card, label, onOpen, onOwnedChange, selectable = false, selected = false, onSelect }) {
   const [busy, setBusy] = useState(false)
 
@@ -33,7 +33,7 @@ export default function CardTile({ card, label, onOpen, onOwnedChange, selectabl
     <div className="relative">
       <button
         type="button"
-        onClick={() => (selectable ? onSelect(card.id) : onOpen(card.id))}
+        onClick={() => (selectable ? onSelect(card) : onOpen(card.id))}
         aria-pressed={selectable ? selected : undefined}
         className="block w-full text-left active:scale-[0.97]"
         title={card.name}

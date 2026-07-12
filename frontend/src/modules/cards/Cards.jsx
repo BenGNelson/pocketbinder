@@ -7,7 +7,6 @@ import { useCollectionSort } from '../../lib/settings.js'
 import CollectionSortMenu from '../../components/CollectionSortMenu.jsx'
 import CardImage from './CardImage.jsx'
 import CardModal from './CardModal.jsx'
-import WantlistModal from './WantlistModal.jsx'
 
 // The Cards hub: your Pokémon TCG collection as a binder. A cover-style value
 // hero, a show-off wall of the cards you own, and a grid of every set with a
@@ -24,7 +23,6 @@ export default function Cards() {
   const { data: showcase } = useApi(`/cards/search?owned=1&limit=24&sort=${sort}&_r=${reloadKey}`, 60000)
   const [modalId, setModalId] = useState(null)
   const [importResult, setImportResult] = useState(null)
-  const [showWantlist, setShowWantlist] = useState(false)
   const navigate = useNavigate()
 
   if (sync && !sync.configured) return <NotConfigured />
@@ -38,14 +36,12 @@ export default function Cards() {
       <div className="flex flex-wrap items-center gap-3">
         <h2 className="pb-display text-lg font-semibold text-[var(--ink)]">Your binder</h2>
         <div className="ml-auto flex items-center gap-2">
-          {(stats?.owned_unique ?? 0) > 0 && (
-            <button
-              onClick={() => setShowWantlist(true)}
-              className="pb-btn-ghost rounded-xl px-3 py-2 text-sm font-medium active:scale-95"
-            >
-              Shopping list
-            </button>
-          )}
+          <Link
+            to="/shop"
+            className="pb-btn-ghost rounded-xl px-3 py-2 text-sm font-medium active:scale-95"
+          >
+            Shop for cards
+          </Link>
           <ImportButton
             onResult={(r) => {
               setImportResult(r)
@@ -85,13 +81,6 @@ export default function Cards() {
       )}
 
       {modalId && <CardModal cardId={modalId} onClose={() => setModalId(null)} onMutated={refresh} />}
-      {showWantlist && (
-        <WantlistModal
-          url="/cards/wantlist"
-          title="Every card you’re missing from the sets you’re collecting"
-          onClose={() => setShowWantlist(false)}
-        />
-      )}
     </div>
   )
 }

@@ -2,6 +2,7 @@ import { Routes, Route, Navigate, Link } from 'react-router-dom'
 import Cards from './modules/cards/Cards.jsx'
 import SetView from './modules/cards/SetView.jsx'
 import Search from './modules/cards/Search.jsx'
+import Shop from './modules/cards/Shop.jsx'
 import ThemeToggle from './components/ThemeToggle.jsx'
 
 // PocketBinder — a self-hosted Pokémon TCG collection tracker. The Cards module
@@ -29,6 +30,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Cards />} />
           <Route path="/search" element={<Search />} />
+          <Route path="/shop" element={<Shop />} />
           <Route path="/sets/:setid" element={<SetView />} />
           {/* Back-compat: the hub used to live under /cards. */}
           <Route path="/cards" element={<Navigate to="/" replace />} />

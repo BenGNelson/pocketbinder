@@ -2,15 +2,15 @@ import { useMemo, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { useApi } from '../../lib/useApi.js'
 import { SkeletonLine } from '../../components/ui.jsx'
-import { completionPct, massEntryLine } from '../../lib/cards.js'
+import { completionPct } from '../../lib/cards.js'
 import CardTile from './CardTile.jsx'
 import CardModal from './CardModal.jsx'
-import WantlistModal from './WantlistModal.jsx'
 
 // One set: its completion header + a grid of EVERY card seated in binder pockets,
 // with the ones you own in full colour and the ones you don't dimmed — so the
 // gaps read at a glance. Tap a card's badge to seat it; an "owned only" toggle
-// (kept in the URL) filters to what you have.
+// (kept in the URL) filters to what you have. Shopping for the gaps lives on its
+// own page (Shop) — this view stays a clean binder.
 export default function SetView() {
   const { setid } = useParams()
   const { data, loading, error } = useApi(`/cards/sets/${encodeURIComponent(setid)}`, 0)
@@ -18,10 +18,6 @@ export default function SetView() {
   const ownedOnly = params.get('owned') === '1'
   const [modalId, setModalId] = useState(null)
   const [edits, setEdits] = useState({})
-  // Buy-list selection: tap cards to hand-pick which to buy (vs. "all missing").
-  const [selectMode, setSelectMode] = useState(false)
-  const [selected, setSelected] = useState(() => new Set())
-  const [buyLines, setBuyLines] = useState(null) // non-null → the buy modal is open
 
   const setOwnedOnly = (on) => {
     const next = new URLSearchParams(params)
@@ -40,23 +36,6 @@ export default function SetView() {
   )
   const ownedCount = allCards.filter((c) => c.owned).length
   const cards = ownedOnly ? allCards.filter((c) => c.owned) : allCards
-  const missingCards = allCards.filter((c) => !c.owned)
-  const missingCount = missingCards.length
-
-  const toggleSelect = (id) =>
-    setSelected((s) => {
-      const next = new Set(s)
-      next.has(id) ? next.delete(id) : next.add(id)
-      return next
-    })
-  const exitSelect = () => {
-    setSelectMode(false)
-    setSelected(new Set())
-  }
-  const openBuySelected = () =>
-    setBuyLines(
-      allCards.filter((c) => selected.has(c.id)).map((c) => massEntryLine(c.name, meta?.ptcgo_code, c.number)),
-    )
 
   return (
     <div className="space-y-4">
@@ -84,58 +63,15 @@ export default function SetView() {
             <span className="pb-bar block h-1.5 rounded">
               <span style={{ width: `${completionPct(ownedCount, meta.card_count)}%` }} />
             </span>
-            {selectMode ? (
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
-                <span className="font-medium text-[var(--ink)]">{selected.size.toLocaleString()} selected</span>
-                <button
-                  onClick={() => setSelected(new Set(missingCards.map((c) => c.id)))}
-                  className="pb-btn-ghost rounded-lg px-3 py-1.5 font-medium active:scale-95"
-                >
-                  Select all missing{missingCount ? ` (${missingCount.toLocaleString()})` : ''}
-                </button>
-                {selected.size > 0 && (
-                  <button
-                    onClick={() => setSelected(new Set())}
-                    className="pb-btn-ghost rounded-lg px-3 py-1.5 font-medium active:scale-95"
-                  >
-                    Clear
-                  </button>
-                )}
-                <button
-                  onClick={openBuySelected}
-                  disabled={selected.size === 0}
-                  className="pb-btn-accent rounded-lg px-3 py-1.5 font-medium active:scale-95 disabled:opacity-50"
-                >
-                  Buy selected ({selected.size.toLocaleString()})
-                </button>
-                <button
-                  onClick={exitSelect}
-                  className="rounded-lg px-3 py-1.5 font-medium text-[var(--dim)] hover:text-[var(--ink)] active:scale-95"
-                >
-                  Done
-                </button>
-              </div>
-            ) : (
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-                <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-[var(--ink)]">
-                  <input
-                    type="checkbox"
-                    checked={ownedOnly}
-                    onChange={(e) => setOwnedOnly(e.target.checked)}
-                    className="accent-[var(--accent)]"
-                  />
-                  Owned only
-                </label>
-                {missingCount > 0 && (
-                  <button
-                    onClick={() => setSelectMode(true)}
-                    className="pb-tint rounded-lg px-3 py-1.5 text-sm font-medium active:scale-95"
-                  >
-                    Select cards to buy
-                  </button>
-                )}
-              </div>
-            )}
+            <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-[var(--ink)]">
+              <input
+                type="checkbox"
+                checked={ownedOnly}
+                onChange={(e) => setOwnedOnly(e.target.checked)}
+                className="accent-[var(--accent)]"
+              />
+              Owned only
+            </label>
           </header>
 
           {cards.length === 0 ? (
@@ -153,9 +89,6 @@ export default function SetView() {
                   onOwnedChange={(id, owned) =>
                     setEdits((e) => ({ ...e, [id]: { owned, qty: owned ? 1 : 0 } }))
                   }
-                  selectable={selectMode}
-                  selected={selected.has(c.id)}
-                  onSelect={toggleSelect}
                 />
               ))}
             </div>
@@ -168,15 +101,6 @@ export default function SetView() {
           cardId={modalId}
           onClose={() => setModalId(null)}
           onMutated={(id, patch) => setEdits((e) => ({ ...e, [id]: patch }))}
-        />
-      )}
-      {buyLines && meta && (
-        <WantlistModal
-          lines={buyLines}
-          title={`${meta.name} — ${buyLines.length.toLocaleString()} hand-picked card${
-            buyLines.length === 1 ? '' : 's'
-          }`}
-          onClose={() => setBuyLines(null)}
         />
       )}
     </div>

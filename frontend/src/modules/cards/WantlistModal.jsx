@@ -62,7 +62,7 @@ export default function WantlistModal({ url, lines, title, onClose }) {
           ✕
         </button>
 
-        <h2 className="pb-display text-lg font-semibold text-[var(--ink)]">Buy missing cards</h2>
+        <h2 className="pb-display text-lg font-semibold text-[var(--ink)]">Your shopping list</h2>
         <p className="mt-0.5 text-sm text-[var(--dim)]">{title}</p>
 
         {!ready && loading ? (
@@ -72,9 +72,10 @@ export default function WantlistModal({ url, lines, title, onClose }) {
         ) : missing > 0 ? (
           <>
             <p className="mt-3 text-sm text-[var(--ink)]">
-              <span className="font-semibold text-[var(--accent)]">{missing.toLocaleString()}</span> cards to go.
-              Copy the list, open TCGplayer Mass Entry and paste it in, then in the cart choose{' '}
-              <span className="font-medium">Optimize → fewest sellers</span> to cut shipping.
+              <span className="font-semibold text-[var(--accent)]">{missing.toLocaleString()}</span> card
+              {missing === 1 ? '' : 's'} on your list. Copy it, open TCGplayer Mass Entry and paste it in,
+              then in the cart choose <span className="font-medium">Optimize → fewest sellers</span> to cut
+              shipping.
             </p>
             <textarea
               ref={taRef}
@@ -96,7 +97,7 @@ export default function WantlistModal({ url, lines, title, onClose }) {
                 rel="noreferrer"
                 className="pb-btn-ghost rounded-xl px-4 py-2 text-sm font-medium active:scale-95"
               >
-                Open Mass Entry ↗
+                Find on TCGplayer ↗
               </a>
             </div>
           </>
