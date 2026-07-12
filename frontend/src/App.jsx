@@ -4,6 +4,7 @@ import SetView from './modules/cards/SetView.jsx'
 import Search from './modules/cards/Search.jsx'
 import Shop from './modules/cards/Shop.jsx'
 import ThemeToggle from './components/ThemeToggle.jsx'
+import SetDrawer from './components/SetDrawer.jsx'
 
 // PocketBinder — a self-hosted Pokémon TCG collection tracker. The Cards module
 // is the whole app; this shell frames it with a brand header (serif wordmark +
@@ -12,7 +13,8 @@ export default function App() {
   return (
     <div className="flex min-h-screen flex-col">
       <header className="pb-topbar sticky top-0 z-40 border-b border-[var(--line)] backdrop-blur">
-        <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3">
+        <div className="mx-auto flex max-w-5xl items-center gap-2 px-4 py-3 sm:gap-3">
+          <SetDrawer />
           <Link to="/" className="flex items-center gap-2">
             <span className="pb-ring block h-3.5 w-3.5 rounded-full" aria-hidden="true"></span>
             <span className="pb-wm pb-display text-xl font-bold tracking-tight">
