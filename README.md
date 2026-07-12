@@ -8,11 +8,9 @@ value, and build a TCGplayer shopping list for the cards you're still missing.
 
 _AI-assisted build._
 
-![PocketBinder — a value-sorted wall of your collection, with per-card prices and
-starred favorites](docs/hero.png)
-
-<sub>Card faces above are placeholders — real card art loads at runtime and isn't
-redistributed by this repo (see the disclaimer below).</sub>
+![PocketBinder — your Pokémon TCG collection as a binder: a persistent set sidebar,
+a foil stats hero, and a value-sorted wall of your cards with per-card prices and a
+starred favorite](docs/hero.jpg)
 
 ---
 
@@ -20,15 +18,18 @@ redistributed by this repo (see the disclaimer below).</sub>
 
 - **Browse every set** — the whole English catalog (~170 sets / ~20k cards),
   ingested from the public [`pokemon-tcg-data`](https://github.com/PokemonTCG/pokemon-tcg-data)
-  dataset into a local SQLite database. Each set shows a completion bar.
+  dataset into a local SQLite database. A persistent set sidebar (an off-canvas
+  drawer on mobile) — with a filter and keyboard ↑/↓ navigation — keeps every set
+  one click away, each with a completion bar, so cards stay the focus of the page.
 - **Collect by tapping** — open a set and the cards you don't own are dimmed and
   gray. Tap a card's corner badge and it flips to full color with a little
-  holographic shine, then settles back into place. No spreadsheet, no account,
-  no data entry that feels like data entry.
-- **Show it off** — a back-lit stats hero and a wall of the cards you own put
-  your collection front and center; the gaps read at a glance. Sort the wall by
-  value, name, recently-added, or set, and **star** the standouts to pin them up
-  top.
+  holographic shine, then settles back into place. Press-and-**hold** a gray card
+  to peek its full-color art without collecting it. No spreadsheet, no account, no
+  data entry that feels like data entry.
+- **Show it off** — a foil stats hero (cards owned · sets complete · sets in
+  progress · % of catalog, your binder's market value alongside) leads a wall of
+  the cards you own; the gaps read at a glance. Sort the wall by value, name,
+  recently-added, or set, and **star** the standouts to pin them up top.
 - **Market value** — with a free [pokemontcg.io](https://dev.pokemontcg.io) API
   key, the app refreshes TCGplayer/Cardmarket prices for the cards you own
   (daily, owned-only, so it stays ≤1 day fresh) and totals your collection value.
@@ -43,6 +44,18 @@ redistributed by this repo (see the disclaimer below).</sub>
   A re-import refreshes the imported cards but preserves your in-app edits.
 
 Mobile-first, with light and dark themes (a header toggle; light by default).
+
+## Screens
+
+| Collect a set | Shop for the gaps |
+|---|---|
+| [![Set view — owned cards in color, the gaps grayed, with a completion bar and owned value](docs/set.jpg)](docs/set.jpg) | [![Shop — hand-pick cards across sets into a copyable buy-list](docs/shop.jpg)](docs/shop.jpg) |
+| Owned cards in color, the gaps grayed — tap to collect. Completion and owned value up top. | Hand-pick cards across any sets, then copy them into a TCGplayer Mass Entry list. |
+
+<p align="center">
+  <img src="docs/mobile.jpg" width="300" alt="Mobile — the off-canvas set drawer in the dark theme"><br>
+  <sub>Mobile-first, with light + dark themes — on phones the set sidebar becomes an off-canvas drawer.</sub>
+</p>
 
 ## Quick start
 
@@ -107,11 +120,15 @@ imported rows but keeps anything you've edited in the app.
   `images.pokemontcg.io` and cached as downscaled WebP on first view (the backend
   never redistributes images).
 - **Frontend** — React + Vite + Tailwind, built to static and served by nginx,
-  which reverse-proxies `/api` so the whole app is one origin. Cards seat into
-  binder pockets; owning one plays a foil "reveal". Theming is token-driven (light
-  default + a dark toggle). Ownership edits are optimistic (instant, with a
-  rollback if the write fails). Card faces load same-origin through the proxy; a
-  strict CSP blocks external hosts (the one inline theme script is allowed by hash).
+  which reverse-proxies `/api` so the whole app is one origin. A master-detail
+  shell (a persistent set sidebar beside the card content, an off-canvas drawer on
+  mobile) keeps cards the focus. Cards seat into binder pockets; owning one plays a
+  foil "reveal". Theming is token-driven (light default + a dark toggle). Ownership
+  edits are optimistic (instant, with a rollback if the write fails); view state
+  that isn't the collection — theme, collection sort, the in-progress shopping list
+  — lives in the browser via a tiny `localStorage` store. Card faces load
+  same-origin through the proxy; a strict CSP blocks external hosts (the one inline
+  theme script is allowed by a sha256 hash).
 - **Data model** — completion, owned counts, and value are pure SQL joins over a
   single `card_ownership` table. Rows carry a `source` (`imported` vs `manual`
   edit) so a re-import never clobbers your in-app changes.
@@ -172,8 +189,9 @@ git config core.hooksPath scripts/git-hooks
 Not affiliated with, endorsed by, or sponsored by Nintendo / Game Freak /
 Creatures / The Pokémon Company. "Pokémon" and card names/images are trademarks
 and copyrights of their respective owners. This is a non-commercial fan tool.
-Card metadata is from the public `pokemon-tcg-data` project; card images are
-fetched at runtime and are not redistributed by this repository.
+Card metadata is from the public `pokemon-tcg-data` project. The app fetches card
+images at runtime and does **not** bundle or redistribute the image dataset; the
+screenshots in this README show card art for illustration only.
 
 ## License
 
