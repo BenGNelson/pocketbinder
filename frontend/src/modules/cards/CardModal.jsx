@@ -133,7 +133,7 @@ export default function CardModal({ cardId, onClose, onMutated }) {
         ) : data ? (
           <div className="flex flex-col gap-4 sm:flex-row sm:gap-6">
             <div className="mx-auto w-48 shrink-0 sm:mx-0 sm:w-[46%] sm:max-w-[380px] sm:self-start">
-              <CardImage card={data} size="large" owned={isOwned} dim={!isOwned} peek={peek} className="w-full" />
+              <CardImage card={data} size="large" owned={isOwned} dim={!isOwned} peek={peek} lift={false} className="w-full" />
               {!isOwned && (
                 <button
                   type="button"
