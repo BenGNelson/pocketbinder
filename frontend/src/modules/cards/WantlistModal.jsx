@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useApi } from '../../lib/useApi.js'
 import { MASSENTRY_URL } from '../../lib/cards.js'
 
@@ -10,6 +10,7 @@ import { MASSENTRY_URL } from '../../lib/cards.js'
 export default function WantlistModal({ url, lines, title, onClose }) {
   const { data, error, loading } = useApi(lines ? null : url, 0)
   const [copied, setCopied] = useState(false)
+  const taRef = useRef(null)
   const rows = lines ?? data?.lines ?? []
   const missing = lines ? lines.length : data?.missing ?? 0
   const ready = lines ? true : !!data
@@ -23,11 +24,22 @@ export default function WantlistModal({ url, lines, title, onClose }) {
 
   const copy = async () => {
     try {
-      await navigator.clipboard.writeText(text)
+      // navigator.clipboard needs a secure context (HTTPS/localhost); over plain
+      // HTTP on a LAN IP it's undefined, so fall back to selecting the textarea +
+      // execCommand (and, failing that, leave it selected for a manual copy).
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text)
+      } else {
+        taRef.current?.focus()
+        taRef.current?.select()
+        if (!document.execCommand('copy')) throw new Error('execCommand failed')
+      }
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch {
-      setCopied(false) // clipboard blocked (rare) — the textarea is selectable as a fallback
+      taRef.current?.focus()
+      taRef.current?.select()
+      setCopied(false)
     }
   }
 
@@ -60,18 +72,22 @@ export default function WantlistModal({ url, lines, title, onClose }) {
         ) : missing > 0 ? (
           <>
             <p className="mt-3 text-sm text-[var(--ink)]">
-              <span className="font-semibold text-[var(--accent)]">{missing.toLocaleString()}</span> cards to
-              go. Copy this list, open TCGplayer Mass Entry, paste it, then in the cart choose{' '}
+              <span className="font-semibold text-[var(--accent)]">{missing.toLocaleString()}</span> cards to go.
+              Copy the list, open TCGplayer Mass Entry and paste it in, then in the cart choose{' '}
               <span className="font-medium">Optimize → fewest sellers</span> to cut shipping.
             </p>
             <textarea
+              ref={taRef}
               readOnly
               value={text}
               onFocus={(e) => e.target.select()}
               className="pb-input mt-3 h-48 w-full resize-none rounded-xl p-3 font-mono text-xs"
             />
-            <div className="mt-3 flex flex-wrap gap-2">
-              <button onClick={copy} className="pb-btn-accent rounded-xl px-4 py-2 text-sm font-medium active:scale-95">
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <button
+                onClick={copy}
+                className="pb-btn-accent rounded-xl px-4 py-2 text-sm font-medium active:scale-95"
+              >
                 {copied ? 'Copied ✓' : 'Copy list'}
               </button>
               <a
@@ -80,7 +96,7 @@ export default function WantlistModal({ url, lines, title, onClose }) {
                 rel="noreferrer"
                 className="pb-btn-ghost rounded-xl px-4 py-2 text-sm font-medium active:scale-95"
               >
-                Open TCGplayer Mass Entry ↗
+                Open Mass Entry ↗
               </a>
             </div>
           </>

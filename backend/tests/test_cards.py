@@ -73,9 +73,10 @@ def test_parse_ownership_csv_and_json_and_dedupe():
 
 
 def test_massentry_line_format():
-    assert cards_mod.massentry_line("Charizard ex", "SSP", "199") == "1 Charizard ex SSP 199"
-    assert cards_mod.massentry_line("Alakazam", None, "1") == "1 Alakazam 1"  # set w/o a code
-    assert cards_mod.massentry_line("Pikachu", "BS", "58", qty=2) == "2 Pikachu BS 58"
+    # TCGplayer Mass Entry resolves name-only lines: "<qty> <name>" (set/number omitted).
+    assert cards_mod.massentry_line("Dragonite", "FO", "4") == "1 Dragonite"
+    assert cards_mod.massentry_line("Alakazam", None, "1") == "1 Alakazam"
+    assert cards_mod.massentry_line("Pikachu", "BS", "58", qty=2) == "2 Pikachu"
 
 
 def test_extract_prices_prefers_holofoil_market():
@@ -348,7 +349,7 @@ def test_wantlist_endpoints(client, catalog):
 
     per_set = client.get("/api/cards/sets/base1/wantlist").json()
     assert per_set["total"] == 3 and per_set["missing"] == 2
-    assert "1 Blastoise BS 2" in per_set["lines"]
+    assert "1 Blastoise" in per_set["lines"]
     assert all("Charizard" not in ln for ln in per_set["lines"])  # owned → not in want-list
     assert client.get("/api/cards/sets/nope/wantlist").status_code == 404
 

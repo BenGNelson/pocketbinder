@@ -162,18 +162,14 @@ def extract_prices(api_card: dict) -> tuple[float | None, float | None]:
 # --- TCGplayer Mass Entry want-list (the buy-helper) ------------------------
 
 
-def massentry_line(name: str, ptcgo_code: str | None, number: str, qty: int = 1) -> str:
-    """One TCGplayer Mass Entry line for a card: ``<qty> <name> <setcode> <number>``
-    (e.g. ``1 Charizard ex SSP 199``). The set code is the ptcgo code — pasted into
-    tcgplayer.com/massentry, then the Cart Optimizer minimizes sellers/shipping. A
-    set with no ptcgo code omits it (Mass Entry still matches on name + number; the
-    user tweaks the few that don't resolve)."""
-    parts = [str(qty), name.strip()]
-    if ptcgo_code:
-        parts.append(ptcgo_code.strip())
-    if number:
-        parts.append(str(number).strip())
-    return " ".join(p for p in parts if p)
+def massentry_line(name: str, ptcgo_code: str | None = None, number: str | None = None, qty: int = 1) -> str:
+    """One TCGplayer Mass Entry line for a card: ``<qty> <name>`` (e.g. ``1 Dragonite``).
+    Name-only is what Mass Entry reliably resolves — its set tokens use TCGplayer's own
+    proprietary set abbreviations, which differ from the ptcgo codes we have (Fossil is
+    ``FO`` here but not on TCGplayer), so emitting one yields "card not found". The buyer
+    picks the exact printing in the cart. `ptcgo_code`/`number` are kept for call-site
+    compatibility but intentionally not emitted."""
+    return f"{qty} {name.strip()}"
 
 
 # --- owned-cards import file (CSV / JSON export → ownership rows) -----------

@@ -41,11 +41,11 @@ describe('cards helpers', () => {
     expect(MASSENTRY_URL).toBe('https://www.tcgplayer.com/massentry')
   })
 
-  it('builds a TCGplayer mass-entry line, trimming and dropping an absent set code', () => {
-    expect(massEntryLine('Charizard', 'BS', '4')).toBe('1 Charizard BS 4')
-    expect(massEntryLine('Mew', 'PR', 'SM01', 3)).toBe('3 Mew PR SM01')
-    expect(massEntryLine('Pikachu', null, '58')).toBe('1 Pikachu 58')
-    expect(massEntryLine('  Snorlax  ', ' JU ', ' 11 ')).toBe('1 Snorlax JU 11')
+  it('builds a name-only TCGplayer mass-entry line: "<qty> <name>"', () => {
+    expect(massEntryLine('Dragonite', 'FO', '4')).toBe('1 Dragonite')
+    expect(massEntryLine('Mew', 'PR', 'SM01', 3)).toBe('3 Mew')
+    expect(massEntryLine('Pikachu', null, '58')).toBe('1 Pikachu')
+    expect(massEntryLine('  Snorlax  ', ' JU ', ' 11 ')).toBe('1 Snorlax')
   })
 
   it('formats USD, returning null when there is nothing to show', () => {
