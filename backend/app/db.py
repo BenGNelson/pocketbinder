@@ -305,19 +305,26 @@ _SEARCH_SORTS = {
 }
 
 
-def search_cards(q, owned=False, limit=100, sort="name"):
+def search_cards(q, owned=False, missing=False, limit=100, sort="name", setids=None):
     """Cards whose name matches `q` (case-insensitive substring), each with an
     ownership overlay + market price. An empty query returns the first `limit` in
     the chosen order (a browseable default). `owned=True` restricts to cards you
-    own (qty>0). `sort` is one of _SEARCH_SORTS (unknown falls back to 'name')."""
+    own (qty>0); `missing=True` restricts to ones you don't (the shopping picker).
+    `owned` wins if both are set. `setids` (a list) scopes the search to those
+    sets — so the shopper can shop one or more sets at a time (empty query then
+    browses those sets' cards). `sort` is one of _SEARCH_SORTS (unknown → 'name')."""
     q = (q or "").strip()
     order_by = _SEARCH_SORTS.get(sort, _SEARCH_SORTS["name"])
-    having = "HAVING owned = 1" if owned else ""
+    having = "HAVING owned = 1" if owned else "HAVING owned = 0" if missing else ""
     join_sets = "JOIN card_sets s ON s.setid = c.setid " if sort == "set" else ""
-    params, where = [], ""
+    params, clauses = [], []
     if q:
-        where = "WHERE c.name LIKE ? ESCAPE '\\' "
+        clauses.append("c.name LIKE ? ESCAPE '\\'")
         params.append(f"%{_like_escape(q)}%")
+    if setids:
+        clauses.append(f"c.setid IN ({','.join('?' * len(setids))})")
+        params.extend(setids)
+    where = ("WHERE " + " AND ".join(clauses) + " ") if clauses else ""
     params.append(limit)
     with get_conn() as conn:
         rows = conn.execute(

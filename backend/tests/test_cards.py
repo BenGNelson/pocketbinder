@@ -246,6 +246,32 @@ def test_search_owned_filter(catalog):
     assert {c["id"] for c in db.search_cards("blastoise", owned=False)} == {"base1-2"}
 
 
+def test_search_missing_filter(catalog):
+    """`missing=True` returns only cards you don't own; `owned` wins if both set."""
+    db.replace_ownership("imported", [{"card_id": "base1-4", "variant": "normal", "qty": 1}])
+    # Charizard is owned, so it's excluded from the missing list…
+    assert db.search_cards("char", missing=True) == []
+    # …but Blastoise (unowned) shows up.
+    assert {c["id"] for c in db.search_cards("blastoise", missing=True)} == {"base1-2"}
+    # owned takes precedence when both flags are set.
+    assert {c["id"] for c in db.search_cards("char", owned=True, missing=True)} == {"base1-4"}
+
+
+def test_search_setids_filter(catalog):
+    """`setids` scopes the search to the given sets (empty query browses them);
+    it combines with the name query and the missing filter."""
+    # Empty query, one set → every card in that set (the "shop a whole set" flow).
+    assert {c["setid"] for c in db.search_cards("", setids=["base1"])} == {"base1"}
+    # Two sets → the union.
+    assert {c["setid"] for c in db.search_cards("", setids=["base1", "swsh1"])} == {"base1", "swsh1"}
+    # A name query still applies within the scoped sets.
+    assert {c["id"] for c in db.search_cards("char", setids=["base1"])} == {"base1-4"}
+    assert db.search_cards("char", setids=["swsh1"]) == []
+    # Combines with the missing filter.
+    db.replace_ownership("imported", [{"card_id": "base1-4", "variant": "normal", "qty": 1}])
+    assert "base1-4" not in {c["id"] for c in db.search_cards("", setids=["base1"], missing=True)}
+
+
 def test_search_sort_by_value(catalog):
     """`sort='value'` orders owned cards by market price, high→low, with unpriced
     cards sinking to the bottom; the price rides along for display."""

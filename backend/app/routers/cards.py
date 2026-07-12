@@ -276,11 +276,13 @@ def cards_collection_wantlist():
 def cards_search(
     q: str = Query("", description="Card-name substring; empty = first results in sort order"),
     owned: bool = Query(False, description="Restrict to cards you own"),
+    missing: bool = Query(False, description="Restrict to cards you don't own (owned wins if both set)"),
+    setid: list[str] | None = Query(None, description="Scope to these sets (repeatable); empty = all sets"),
     limit: int = Query(120, ge=1, le=500),
     sort: str = Query("name", description="Order: name | value | recent | set (unknown → name)"),
 ):
     """Search across the whole catalog by card name, with an owned overlay."""
-    rows = db.search_cards(q, owned=owned, limit=limit, sort=sort)
+    rows = db.search_cards(q, owned=owned, missing=missing, limit=limit, sort=sort, setids=setid)
     return {"items": [_brief(r) for r in rows], "total": db.count_cards(), "query": q}
 
 
