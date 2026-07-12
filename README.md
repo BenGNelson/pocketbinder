@@ -1,9 +1,10 @@
 # PocketBinder
 
+[![CI](https://github.com/BenGNelson/pocketbinder/actions/workflows/ci.yml/badge.svg)](https://github.com/BenGNelson/pocketbinder/actions/workflows/ci.yml)
+
 A self-hosted **Pokémon TCG collection tracker**. Browse every set from a local
 catalog, tap the cards you own to light them up, watch your collection's market
-value, and generate a one-click TCGplayer shopping list for the cards you're
-still missing.
+value, and build a TCGplayer shopping list for the cards you're still missing.
 
 _AI-assisted build._
 
@@ -19,14 +20,18 @@ _AI-assisted build._
   holographic shine, then settles back into place. No spreadsheet, no account,
   no data entry that feels like data entry.
 - **Show it off** — a back-lit stats hero and a wall of the cards you own put
-  your collection front and centre; the gaps read at a glance.
+  your collection front and centre; the gaps read at a glance. Sort the wall by
+  value, name, recently-added, or set, and **star** the standouts to pin them up
+  top.
 - **Market value** — with a free [pokemontcg.io](https://dev.pokemontcg.io) API
   key, the app refreshes TCGplayer/Cardmarket prices for the cards you own
   (daily, owned-only, so it stays ≤1 day fresh) and totals your collection value.
-- **Buy what you're missing** — a "Buy missing" button turns a set's gaps (or your
-  whole want-list) into a **TCGplayer Mass Entry** list. Paste it, and TCGplayer's
-  own cart optimizer finds the fewest sellers to minimize shipping. PocketBinder
-  builds the list; TCGplayer matches the sellers — no scraping.
+  Prices ride along as a chip on each card and as a per-set owned-value.
+- **Shop for what you're missing** — a dedicated **Shop** page to hand-pick cards
+  across any sets (defaulting to the ones you don't own, filterable by set) into a
+  shopping list, then copy it into **TCGplayer Mass Entry**. TCGplayer's own cart
+  optimizer finds the fewest sellers to minimize shipping. PocketBinder builds the
+  list; TCGplayer matches the sellers — no scraping.
 - **Bulk import** — already have your collection in a spreadsheet or an export
   from another tool? Import a CSV/JSON once (see [Filling your collection](#filling-your-collection)).
   A re-import refreshes the imported cards but preserves your in-app edits.
@@ -136,6 +141,16 @@ toolchain needed):
 
 ```bash
 bash scripts/test.sh          # backend pytest + frontend vitest
+```
+
+The same suites run in CI on every push and pull request (see the badge above).
+
+**Contributing?** Enable the privacy-guard pre-commit hook once per clone — it
+blocks a commit whose staged changes contain a host identifier (hostname, LAN/VPN
+IP, absolute home path) so nothing environment-specific lands in this public repo:
+
+```bash
+git config core.hooksPath scripts/git-hooks
 ```
 
 ## Roadmap

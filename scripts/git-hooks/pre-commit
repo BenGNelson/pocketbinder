@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# PocketBinder pre-commit privacy guard (PUBLIC repo).
+#
+# Blocks a commit whose staged, newly-ADDED lines contain either:
+#   - an AI / assistant reference (the ONE allowed mention is the existing
+#     "AI-assisted build." line in README.md — we don't match a bare "AI"), or
+#   - a host identifier from the machine you're on: a hostname, a LAN/Tailscale
+#     IP, a tailnet domain, or an absolute home-directory path.
+#
+# Enable it once per clone:  git config core.hooksPath scripts/git-hooks
+# False positive?  Override a single commit with:  git commit --no-verify
+set -euo pipefail
+
+ai='claude|anthropic|co-authored-by'
+host='192\.168\.|100\.(6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])\.|\.ts\.net|/home/[a-z_][a-z0-9_-]*/'
+
+fail=0
+while IFS= read -r file; do
+  # The guard names these patterns itself — don't let it flag its own source.
+  case "$file" in
+    scripts/git-hooks/*) continue ;;
+  esac
+  added="$(git diff --cached --no-color -U0 -- "$file" | grep -E '^\+' | grep -Ev '^\+\+\+' || true)"
+  hits="$(printf '%s\n' "$added" | grep -niE "$ai|$host" || true)"
+  if [ -n "$hits" ]; then
+    echo "✖ $file — blocked content (public repo):"
+    printf '%s\n' "$hits" | sed 's/^/    /'
+    fail=1
+  fi
+done < <(git diff --cached --name-only --diff-filter=ACM)
+
+if [ "$fail" -ne 0 ]; then
+  cat >&2 <<'MSG'
+
+Commit blocked: host identifiers or AI references in staged changes (public repo).
+Remove them, or — if it's a genuine false positive — override with:
+  git commit --no-verify
+MSG
+  exit 1
+fi
