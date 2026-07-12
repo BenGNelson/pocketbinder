@@ -104,6 +104,11 @@ export default function SetSidebar({ open, onClose }) {
   const contents = (activeRef, onPick, onNav) => (
     <>
       <div className="shrink-0 space-y-2 border-b border-[var(--line)] px-3 py-3">
+        <div className="space-y-0.5">
+          <NavItem to="/" end onNav={onNav}>Your collection</NavItem>
+          <NavItem to="/search" onNav={onNav}>Search all cards</NavItem>
+          <NavItem to="/shop" onNav={onNav}>Shop for cards</NavItem>
+        </div>
         <input
           type="search"
           value={filter}
@@ -112,11 +117,6 @@ export default function SetSidebar({ open, onClose }) {
           aria-label="Filter sets"
           className="pb-input w-full rounded-xl px-3 py-2 text-sm"
         />
-        <div className="space-y-0.5">
-          <NavItem to="/" end onNav={onNav}>Your collection</NavItem>
-          <NavItem to="/search" onNav={onNav}>Search all cards</NavItem>
-          <NavItem to="/shop" onNav={onNav}>Shop for cards</NavItem>
-        </div>
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
