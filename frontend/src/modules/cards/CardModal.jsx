@@ -145,7 +145,7 @@ export default function CardModal({ cardId, onClose, onMutated }) {
                     'Show as uncollected'
                   ) : (
                     <>
-                      <span aria-hidden="true">👁</span> Peek in colour
+                      <span aria-hidden="true">👁</span> Peek in color
                     </>
                   )}
                 </button>

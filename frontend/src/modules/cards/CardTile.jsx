@@ -16,7 +16,7 @@ const HOLD_MS = 200
 // In `selectable` mode the card instead toggles a shopping-list selection: tapping
 // it calls `onSelect(card)` and it shows a check when `selected`.
 //
-// A card you DON'T own is greyed; press-and-HOLD it to peek the full-colour
+// A card you DON'T own is greyed; press-and-HOLD it to peek the full-color
 // version (a soft bloom), release to let it settle back. A quick tap still
 // opens/selects — the hold just suppresses that one click.
 export default function CardTile({ card, label, onOpen, onOwnedChange, selectable = false, selected = false, onSelect }) {

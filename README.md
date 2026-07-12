@@ -22,7 +22,7 @@ redistributed by this repo (see the disclaimer below).</sub>
   ingested from the public [`pokemon-tcg-data`](https://github.com/PokemonTCG/pokemon-tcg-data)
   dataset into a local SQLite database. Each set shows a completion bar.
 - **Collect by tapping** — open a set and the cards you don't own are dimmed and
-  grey. Tap a card's corner badge and it flips to full colour with a little
+  grey. Tap a card's corner badge and it flips to full color with a little
   holographic shine, then settles back into place. No spreadsheet, no account,
   no data entry that feels like data entry.
 - **Show it off** — a back-lit stats hero and a wall of the cards you own put

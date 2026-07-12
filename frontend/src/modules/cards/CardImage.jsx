@@ -7,10 +7,10 @@ import { cardImageUrl } from '../../lib/cards.js'
 // Pokémon card ratio (63×88mm).
 //
 // When `owned` transitions false→true (you just added it), the face plays a
-// one-shot "reveal": a flip-to-colour pop with a holographic shine. Self-clearing
+// one-shot "reveal": a flip-to-color pop with a holographic shine. Self-clearing
 // (onAnimationEnd) and honours prefers-reduced-motion via CSS.
 //
-// `peek` momentarily lifts the greyscale on a card you don't own (a soft colour
+// `peek` momentarily lifts the greyscale on a card you don't own (a soft color
 // bloom) — "hold it up to the light" without collecting it. `lift` adds the scale
 // pop (nice in a grid, to rise above neighbours; off in the modal, where the growth
 // would just crowd the controls).

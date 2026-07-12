@@ -17,7 +17,7 @@
 /* ============================================================
    PocketBinder theme — "Ruby". Light is the default; the header
    toggle flips :root[data-theme] and persists it. Everything
-   colour-related is a token so both themes stay in sync.
+   color-related is a token so both themes stay in sync.
    ============================================================ */
 :root {
   color-scheme: light;
@@ -119,7 +119,7 @@ body { background-color: var(--bg); color: var(--ink); font-family: var(--font-u
    cleanly). The reveal still plays its one-shot shine on collect. */
 .pb-seated { box-shadow: 0 0 0 1.5px var(--accent), 0 3px 8px -4px rgba(0,0,0,0.45); }
 
-/* --- the card reveal (unowned → owned): flip to colour + holo shine --- */
+/* --- the card reveal (unowned → owned): flip to color + holo shine --- */
 @keyframes pb-reveal {
   0%   { transform: perspective(700px) rotateY(-70deg) scale(0.9); filter: grayscale(1) brightness(1.4); }
   55%  { transform: perspective(700px) rotateY(0deg) scale(1.08);  filter: grayscale(0) brightness(1.1); }
@@ -132,7 +132,7 @@ body { background-color: var(--bg); color: var(--ink); font-family: var(--font-u
 }
 .pb-reveal { animation: pb-reveal 500ms cubic-bezier(0.2,0.7,0.2,1) both; will-change: transform, filter; }
 
-/* The un-collect (owned → unowned): a quick fade from colour back to the greyed,
+/* The un-collect (owned → unowned): a quick fade from color back to the greyed,
    dimmed empty-pocket state. Ends where the static `dim` styling picks up. */
 @keyframes pb-unreveal {
   0%   { filter: grayscale(0);   opacity: 1;    }

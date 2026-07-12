@@ -7,7 +7,7 @@ import CardTile from './CardTile.jsx'
 import CardModal from './CardModal.jsx'
 
 // One set: its completion header + a grid of EVERY card seated in binder pockets,
-// with the ones you own in full colour and the ones you don't dimmed — so the
+// with the ones you own in full color and the ones you don't dimmed — so the
 // gaps read at a glance. Tap a card's badge to seat it; an "owned only" toggle
 // (kept in the URL) filters to what you have. Shopping for the gaps lives on its
 // own page (Shop) — this view stays a clean binder.
