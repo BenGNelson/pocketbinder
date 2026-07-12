@@ -16,10 +16,15 @@ import { SkeletonLine } from './ui.jsx'
 // Props: `open`/`onClose` drive the MOBILE drawer only (desktop is always shown).
 export default function SetSidebar({ open, onClose }) {
   const [filter, setFilter] = useState('')
+  // Keyboard highlight index into the flattened list (-1 = none). Stays -1 until
+  // you press an arrow, so mouse/touch users never see a highlight.
+  const [kbIndex, setKbIndex] = useState(-1)
   const navigate = useNavigate()
   const location = useLocation()
   const desktopActive = useRef(null)
   const mobileActive = useRef(null)
+  const kbDesktop = useRef(null)
+  const kbMobile = useRef(null)
   const panelRef = useRef(null)
   const closeRef = useRef(null)
 
@@ -39,6 +44,29 @@ export default function SetSidebar({ open, onClose }) {
     const rest = sets.filter((s) => s.owned === 0 && matches(s))
     return { collecting, rest }
   }, [sets, q])
+
+  // The list as one sequence for arrow-key navigation (collecting first, then rest).
+  const flat = useMemo(() => [...collecting, ...rest], [collecting, rest])
+  const move = (delta) =>
+    setKbIndex((i) => {
+      if (!flat.length) return -1
+      if (i < 0) return delta > 0 ? 0 : flat.length - 1
+      return Math.min(Math.max(i + delta, 0), flat.length - 1)
+    })
+
+  // A changed filter (or a closed drawer) drops the keyboard highlight.
+  useEffect(() => setKbIndex(-1), [q])
+  useEffect(() => {
+    if (!open) setKbIndex(-1)
+  }, [open])
+
+  // Keep the arrow-highlighted row in view. Scrolls both refs; the hidden column's
+  // element has no layout, so its scrollIntoView is a harmless no-op.
+  useEffect(() => {
+    if (kbIndex < 0) return
+    kbDesktop.current?.scrollIntoView({ block: 'nearest' })
+    kbMobile.current?.scrollIntoView({ block: 'nearest' })
+  }, [kbIndex])
 
   // Mobile drawer only: Escape closes, background scroll locks, focus lands on the
   // close button (not the filter — avoids popping the phone keyboard), and the active
@@ -70,18 +98,20 @@ export default function SetSidebar({ open, onClose }) {
     desktopActive.current?.scrollIntoView({ block: 'nearest' })
   }, [currentSetId, sets.length])
 
-  const row = (s, activeRef, onPick) => {
+  const row = (s, i, activeRef, kbRef, onPick) => {
     const active = s.setid === currentSetId
+    const highlighted = i === kbIndex
     const pct = completionPct(s.owned, s.card_count)
+    const base = active ? 'pb-tint' : highlighted ? 'bg-[var(--pocket)]' : 'hover:bg-[var(--pocket)]'
     return (
       <button
         key={s.setid}
-        ref={active ? activeRef : null}
+        ref={highlighted ? kbRef : active ? activeRef : null}
         type="button"
         onClick={() => onPick(s.setid)}
         aria-current={active ? 'page' : undefined}
-        className={`block w-full rounded-lg px-2.5 py-2 text-left active:scale-[0.99] ${
-          active ? 'pb-tint' : 'hover:bg-[var(--pocket)]'
+        className={`block w-full rounded-lg px-2.5 py-2 text-left active:scale-[0.99] ${base} ${
+          highlighted ? 'ring-1 ring-[var(--accent)]' : ''
         }`}
       >
         <div className="flex items-baseline justify-between gap-2">
@@ -101,7 +131,7 @@ export default function SetSidebar({ open, onClose }) {
 
   // The shared innards — filter, primary links, and the grouped set list. `onPick`
   // navigates (and, on mobile, closes); `onNav` closes the drawer after a top link.
-  const contents = (activeRef, onPick, onNav) => (
+  const contents = (activeRef, kbRef, onPick, onNav) => (
     <>
       <div className="shrink-0 space-y-2 border-b border-[var(--line)] px-3 py-3">
         <div className="space-y-0.5">
@@ -113,7 +143,23 @@ export default function SetSidebar({ open, onClose }) {
           type="search"
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
-          placeholder="Filter sets…"
+          onKeyDown={(e) => {
+            if (e.key === 'ArrowDown') {
+              e.preventDefault()
+              move(1)
+            } else if (e.key === 'ArrowUp') {
+              e.preventDefault()
+              move(-1)
+            } else if (e.key === 'Enter') {
+              if (kbIndex >= 0 && flat[kbIndex]) {
+                e.preventDefault()
+                onPick(flat[kbIndex].setid)
+              }
+            } else if (e.key === 'Escape') {
+              setKbIndex(-1)
+            }
+          }}
+          placeholder="Filter sets… (↑↓ to browse)"
           aria-label="Filter sets"
           className="pb-input w-full rounded-xl px-3 py-2 text-sm"
         />
@@ -135,13 +181,17 @@ export default function SetSidebar({ open, onClose }) {
             {collecting.length > 0 && (
               <>
                 {!q && <Group>Collecting</Group>}
-                <div className="space-y-0.5">{collecting.map((s) => row(s, activeRef, onPick))}</div>
+                <div className="space-y-0.5">
+                  {collecting.map((s, i) => row(s, i, activeRef, kbRef, onPick))}
+                </div>
               </>
             )}
             {rest.length > 0 && (
               <>
                 {!q && <Group>All sets</Group>}
-                <div className="space-y-0.5">{rest.map((s) => row(s, activeRef, onPick))}</div>
+                <div className="space-y-0.5">
+                  {rest.map((s, i) => row(s, collecting.length + i, activeRef, kbRef, onPick))}
+                </div>
               </>
             )}
           </>
@@ -163,7 +213,7 @@ export default function SetSidebar({ open, onClose }) {
         aria-label="Sets"
         className="hidden shrink-0 border-r border-[var(--line)] lg:sticky lg:top-14 lg:flex lg:h-[calc(100dvh-3.5rem)] lg:w-64 lg:flex-col"
       >
-        {contents(desktopActive, pickDesktop, undefined)}
+        {contents(desktopActive, kbDesktop, pickDesktop, undefined)}
       </nav>
 
       {/* Mobile: an off-canvas dialog drawer. Backdrop + slide-in panel. */}
@@ -194,7 +244,7 @@ export default function SetSidebar({ open, onClose }) {
             ✕
           </button>
         </div>
-        {contents(mobileActive, pickMobile, onClose)}
+        {contents(mobileActive, kbMobile, pickMobile, onClose)}
       </aside>
     </>
   )
