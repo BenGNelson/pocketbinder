@@ -44,6 +44,7 @@ export default function Shop() {
   const clearSets = () => patch((n) => n.delete('set'))
 
   const { data: setsData } = useApi('/cards/sets', 0)
+  const setName = (id) => setsData?.sets?.find((s) => s.setid === id)?.name || id
   const q = encodeURIComponent(query.trim())
   const scopeParam = SCOPES.find((s) => s.id === scope)?.param ?? ''
   const setParam = setids.map((s) => `&setid=${encodeURIComponent(s)}`).join('')
@@ -99,6 +100,33 @@ export default function Shop() {
         ))}
         <span className="mx-0.5 hidden h-5 w-px self-center bg-[var(--line)] sm:block" aria-hidden="true" />
         <SetFilter sets={setsData?.sets ?? []} selected={setids} onToggle={toggleSet} onClear={clearSets} />
+
+        {/* Selected sets as removable chips — what's scoping the hunt, at a glance. */}
+        {setids.map((id) => (
+          <span
+            key={id}
+            className="pb-tint inline-flex items-center gap-1 rounded-lg py-1 pl-2.5 pr-1 text-sm font-medium"
+          >
+            <span className="max-w-[9rem] truncate">{setName(id)}</span>
+            <button
+              type="button"
+              onClick={() => toggleSet(id)}
+              aria-label={`Remove ${setName(id)}`}
+              className="flex h-5 w-5 items-center justify-center rounded-md leading-none hover:opacity-70 active:scale-90"
+            >
+              ✕
+            </button>
+          </span>
+        ))}
+        {setids.length > 1 && (
+          <button
+            type="button"
+            onClick={clearSets}
+            className="rounded-lg px-2 py-1 text-sm font-medium text-[var(--dim)] hover:text-[var(--ink)] active:scale-95"
+          >
+            Clear
+          </button>
+        )}
       </div>
 
       {loading && !data ? (

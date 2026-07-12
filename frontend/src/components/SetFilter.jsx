@@ -32,7 +32,6 @@ export default function SetFilter({ sets = [], selected = [], onToggle, onClear 
   }, [sets, q])
 
   const selectedSet = new Set(selected)
-  const label = selected.length === 0 ? 'All sets' : `${selected.length} set${selected.length === 1 ? '' : 's'}`
 
   const row = (s) => {
     const active = selectedSet.has(s.setid)
@@ -43,12 +42,19 @@ export default function SetFilter({ sets = [], selected = [], onToggle, onClear 
         role="menuitemcheckbox"
         aria-checked={active}
         onClick={() => onToggle(s.setid)}
-        className={`flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-sm active:scale-[0.98] ${
+        className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm active:scale-[0.98] ${
           active ? 'pb-tint' : 'text-[var(--ink)] hover:bg-[var(--pocket)]'
         }`}
       >
+        <span
+          aria-hidden="true"
+          className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border text-[10px] font-bold leading-none ${
+            active ? 'border-[var(--accent)] bg-[var(--accent)] text-white' : 'border-[var(--line)] text-transparent'
+          }`}
+        >
+          ✓
+        </span>
         <span className="min-w-0 flex-1 truncate">{s.name}</span>
-        {active && <span aria-hidden="true">✓</span>}
       </button>
     )
   }
@@ -60,11 +66,9 @@ export default function SetFilter({ sets = [], selected = [], onToggle, onClear 
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="menu"
         aria-expanded={open}
-        className={`rounded-lg px-3 py-1.5 text-sm font-medium active:scale-95 ${
-          selected.length ? 'pb-btn-accent' : 'pb-btn-ghost'
-        }`}
+        className="pb-btn-ghost rounded-lg px-3 py-1.5 text-sm font-medium active:scale-95"
       >
-        {label} <span aria-hidden="true">▾</span>
+        Filter by set <span aria-hidden="true">▾</span>
       </button>
       {open && (
         <div role="menu" className="pb-card absolute left-0 z-50 mt-2 w-72 rounded-xl p-2 shadow-[var(--shadow)]">
@@ -78,13 +82,12 @@ export default function SetFilter({ sets = [], selected = [], onToggle, onClear 
             className="pb-input mb-1 w-full rounded-lg px-3 py-1.5 text-sm"
           />
           {selected.length > 0 && (
-            <button
-              type="button"
-              onClick={onClear}
-              className="mb-1 w-full rounded-lg px-2 py-1 text-left text-xs font-medium text-[var(--dim)] hover:text-[var(--ink)]"
-            >
-              Clear {selected.length} selected
-            </button>
+            <div className="mb-1 flex items-center justify-between px-2 py-1 text-xs">
+              <span className="font-medium text-[var(--dim)]">{selected.length} selected</span>
+              <button type="button" onClick={onClear} className="font-medium text-[var(--accent)] hover:underline">
+                Clear
+              </button>
+            </div>
           )}
           <div className="max-h-72 overflow-y-auto">
             {ordered.collecting.length > 0 && (
