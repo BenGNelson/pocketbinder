@@ -1,8 +1,11 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import CardImage from './CardImage.jsx'
 import OwnToggle from './OwnToggle.jsx'
 import { PriceChip, FavoriteStar } from '../../components/ui.jsx'
 import { ownCard, unownCard } from '../../lib/ownership.js'
+
+// How long you hold before a press becomes a "peek" instead of a tap.
+const HOLD_MS = 200
 
 // One card in a browse grid: the face seated in a recessed binder pocket (opens
 // the detail modal) plus a corner owned-toggle for fast in-place collecting.
@@ -12,8 +15,15 @@ import { ownCard, unownCard } from '../../lib/ownership.js'
 //
 // In `selectable` mode the card instead toggles a shopping-list selection: tapping
 // it calls `onSelect(card)` and it shows a check when `selected`.
+//
+// A card you DON'T own is greyed; press-and-HOLD it to peek the full-colour
+// version (a soft bloom), release to let it settle back. A quick tap still
+// opens/selects — the hold just suppresses that one click.
 export default function CardTile({ card, label, onOpen, onOwnedChange, selectable = false, selected = false, onSelect }) {
   const [busy, setBusy] = useState(false)
+  const [peeking, setPeeking] = useState(false)
+  const holdTimer = useRef(null)
+  const peekedRef = useRef(false) // did this press turn into a peek? (suppresses the click)
 
   const toggle = async () => {
     if (busy) return
@@ -30,13 +40,40 @@ export default function CardTile({ card, label, onOpen, onOwnedChange, selectabl
     }
   }
 
+  const startHold = (e) => {
+    if (card.owned || e.button > 0) return // only greyed cards peek; ignore non-primary buttons
+    peekedRef.current = false
+    holdTimer.current = setTimeout(() => {
+      peekedRef.current = true
+      setPeeking(true)
+    }, HOLD_MS)
+  }
+  const endHold = () => {
+    clearTimeout(holdTimer.current)
+    setPeeking(false)
+  }
+  const activate = () => {
+    if (peekedRef.current) {
+      peekedRef.current = false // that press was a peek, not a tap — swallow it
+      return
+    }
+    selectable ? onSelect(card) : onOpen(card.id)
+  }
+
   return (
     <div className="relative">
       <button
         type="button"
-        onClick={() => (selectable ? onSelect(card) : onOpen(card.id))}
+        onClick={activate}
+        onPointerDown={startHold}
+        onPointerUp={endHold}
+        onPointerLeave={endHold}
+        onPointerCancel={endHold}
+        onContextMenu={(e) => e.preventDefault()}
         aria-pressed={selectable ? selected : undefined}
-        className="block w-full text-left active:scale-[0.97]"
+        className={`block w-full select-none text-left [-webkit-touch-callout:none] ${
+          peeking ? '' : 'active:scale-[0.97]'
+        }`}
         title={card.name}
       >
         <div
@@ -44,7 +81,7 @@ export default function CardTile({ card, label, onOpen, onOwnedChange, selectabl
             selectable && selected ? 'ring-2 ring-[var(--accent)] ring-offset-2 ring-offset-[var(--bg)]' : ''
           }`}
         >
-          <CardImage card={card} owned={card.owned} dim={!card.owned} />
+          <CardImage card={card} owned={card.owned} dim={!card.owned} peek={peeking} />
           <PriceChip usd={card.tcgplayer_usd} />
           <FavoriteStar on={card.favorite} />
         </div>

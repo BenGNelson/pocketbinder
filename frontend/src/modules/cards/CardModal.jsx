@@ -21,7 +21,11 @@ export default function CardModal({ cardId, onClose, onMutated }) {
   const { data, loading } = useApi(cardId ? `/cards/card/${encodeURIComponent(cardId)}` : null, 0)
   const [busy, setBusy] = useState(false)
   const [local, setLocal] = useState(null)
-  useEffect(() => setLocal(null), [cardId])
+  const [peek, setPeek] = useState(false)
+  useEffect(() => {
+    setLocal(null)
+    setPeek(false)
+  }, [cardId])
 
   useEffect(() => {
     const onKey = (e) => e.key === 'Escape' && onClose()
@@ -129,7 +133,23 @@ export default function CardModal({ cardId, onClose, onMutated }) {
         ) : data ? (
           <div className="flex flex-col gap-4 sm:flex-row sm:gap-6">
             <div className="mx-auto w-48 shrink-0 sm:mx-0 sm:w-[46%] sm:max-w-[380px] sm:self-start">
-              <CardImage card={data} size="large" owned={isOwned} dim={!isOwned} className="w-full" />
+              <CardImage card={data} size="large" owned={isOwned} dim={!isOwned} peek={peek} className="w-full" />
+              {!isOwned && (
+                <button
+                  type="button"
+                  onClick={() => setPeek((p) => !p)}
+                  aria-pressed={peek}
+                  className="pb-btn-ghost mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium active:scale-95"
+                >
+                  {peek ? (
+                    'Show as uncollected'
+                  ) : (
+                    <>
+                      <span aria-hidden="true">👁</span> Peek in colour
+                    </>
+                  )}
+                </button>
+              )}
             </div>
             <div className="min-w-0 flex-1 space-y-2">
               <div>

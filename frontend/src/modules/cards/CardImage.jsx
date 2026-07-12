@@ -9,7 +9,10 @@ import { cardImageUrl } from '../../lib/cards.js'
 // When `owned` transitions false→true (you just added it), the face plays a
 // one-shot "reveal": a flip-to-colour pop with a holographic shine. Self-clearing
 // (onAnimationEnd) and honours prefers-reduced-motion via CSS.
-export default function CardImage({ card, size = 'small', owned = false, dim = false, className = '' }) {
+//
+// `peek` momentarily lifts the greyscale on a card you don't own (a soft colour
+// bloom) — "hold it up to the light" without collecting it.
+export default function CardImage({ card, size = 'small', owned = false, dim = false, peek = false, className = '' }) {
   const [failed, setFailed] = useState(false)
   const [revealing, setRevealing] = useState(false)
   const [unrevealing, setUnrevealing] = useState(false)
@@ -27,6 +30,8 @@ export default function CardImage({ card, size = 'small', owned = false, dim = f
   }, [owned])
 
   const animating = revealing || unrevealing
+  const greyed = dim && !animating && !peek
+  const blooming = dim && peek && !animating
 
   return (
     <div
@@ -35,10 +40,10 @@ export default function CardImage({ card, size = 'small', owned = false, dim = f
         setUnrevealing(false)
       }}
       className={`relative aspect-[5/7] overflow-hidden rounded-md bg-[var(--raised)] ${
-        owned ? 'pb-seated' : ''
-      } ${dim && !animating ? 'opacity-45 grayscale' : ''} ${
-        revealing ? 'pb-reveal pb-shine' : ''
-      } ${unrevealing ? 'pb-unreveal' : ''} ${className}`}
+        !animating ? 'transition-[filter,opacity,transform] duration-300 motion-reduce:transition-none' : ''
+      } ${owned ? 'pb-seated' : ''} ${greyed ? 'opacity-45 grayscale' : ''} ${
+        blooming ? 'z-10 scale-[1.04] shadow-[var(--shadow)]' : ''
+      } ${revealing ? 'pb-reveal pb-shine' : ''} ${unrevealing ? 'pb-unreveal' : ''} ${className}`}
     >
       {failed ? (
         <div className="flex h-full w-full flex-col items-center justify-center gap-1 p-2 text-center">
